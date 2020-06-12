@@ -8,3 +8,6 @@ msconvert -c msconvert-SIMMS1.config test.wiff
 # mzML to ms1/mgf files
 RAW.mzML.parser.pl ms1 test.mzML
 RAW.mzML.parser.pl mgf test.mzML
+SWATH.mzML.parser.pl ms1 test.mzML
+SWATH.mzML.parser.pl mgf test.mzML
+
