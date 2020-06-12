@@ -1,0 +1,10 @@
+# MS raw data convert tool from ProteoWizard
+# Thermo data to mzML
+msconvert -c msconvert-SIMMS1.config test.raw 
+
+# SWATH data to mzML
+msconvert -c msconvert-SIMMS1.config test.wiff
+
+# mzML to ms1/mgf files
+RAW.mzML.parser.pl ms1 test.mzML
+RAW.mzML.parser.pl mgf test.mzML
