@@ -1,11 +1,6 @@
 #!/usr/bin/env perl
 
-# charge_script [$file] [$charge_dir] [ms2 ppm] [data points] [min_pearson] [min_res_pearson] [min_peaks_splited]
-
-# 20191031 1. one mgf files, 2. no precharge adjustment, 3. keep the mgf with the basepeak of the highest intensity within 30s.
-
-# 201912010 re-write the processing workflow of data spliting, decide which signal to be centric, then do split 
-
+# 
 use strict;
 use Data::Dumper;
 use POSIX qw(floor);
@@ -18,7 +13,6 @@ my $PI = 4 * atan2(1, 1);
 my $massdiff_C12_C13 = 1.0033548378;
 
 use Statistics::KernelEstimation;
-
 
 $| = 1;
 
