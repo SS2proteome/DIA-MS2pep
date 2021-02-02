@@ -193,6 +193,8 @@ while(<FH>){
 	}elsif(/^END/){
 		my $filtered_ion_arr;
 		
+		# if ($ms2scan < 20000){next;}
+		# if ($ms2scan > 21000){exit;}
 		if($buffer1_ms2scan_data->{$premz}->[0]){
 			$filtered_ion_arr->{$premz} = $buffer1_ms2scan_data->{$premz}
 		}
