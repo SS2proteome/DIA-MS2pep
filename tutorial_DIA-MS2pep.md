@@ -5,8 +5,11 @@ DIA-MS2pep is well-compatible to Linux system users. For Windows system users, t
 
 ### External tools:
 1.       Msconvert (ProteoWizard, Version 3.0.9974)
+
 2.       MSFragger (Version 2.4, or above)
+
 3.       Percolator (Version 3.02.1)
+
 ### Data processing (Here we suppose “demo_DIA.raw” as an example file of DIA data)
 ## 1.       Convert Raw files to mzML files
 MSconvert in ProteoWizard is recommended tool to convert the raw MS data to mzML files.
