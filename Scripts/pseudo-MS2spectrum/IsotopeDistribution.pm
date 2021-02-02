@@ -278,6 +278,16 @@ sub CAPTT{
 
 
 =head 
+Analytica Chimica Acta
+Volume 247, Issue 1, 14 June 1991, Pages 107-119
+Calculation of isotope distributions in mass spectrometry. A trivial solution for a non-trivial problem
+
+REM --------------------------------------------------------
+REM 			calculation of isotope distributions
+REM --------------------------------------------------------
+
+REM list of atoms = H, He, Li, Be, B, C, N, O, ...
+
 P = 1: Q = 1					:REM 	initialize P (=low), Q (=high)
 PREC = 0.000001					:REM 	define pruning treshold factor PREC
 CAPTT(1) = 1					:REM 	CAPTT = calculated pattern
