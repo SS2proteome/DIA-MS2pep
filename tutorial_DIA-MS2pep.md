@@ -40,13 +40,13 @@ OR
 
 `RAW.mzML.parser.pl ms1 demo_DIA.mzML` 
 
-### 3.       Read isolation window setting parameter of DIA data acquisition from mzMLs
+### 3.       Run *DIA_acquisition_window_generator.pl* to obtain isolation window setting parameter of DIA data acquisition from mzMLs
 
 `DIA_acquisition_window_generator.pl mgf demo_DIA.mzML`
 
-One file named “demo_DIA.mzML.DIA_acquisition_window.txt” will be generated in the current directory.
+One file named “demo_DIA.mzML.DIA_acquisition_window.txt” will be generated.
 
-### 4.       Run DIA_pseudoMS2.pl to generate the pseudo-spectra (.mgfs) 
+### 4.       Run *DIA_pseudoMS2.pl* to generate the pseudo-spectra (.mgfs) 
 **Usage:** `DIA_pseudoMS2.pl <Filename> <ms2 mass tolerance ppm> `
 
 -Filename: It doesn’t contain the file extension, and blank space in filename is not allowed in filename to avoid the misinterpretation of commands in Linux environment.
