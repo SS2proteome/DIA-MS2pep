@@ -17,15 +17,10 @@ MSconvert in ProteoWizard is recommended tool to convert the raw MS data to mzML
 One can save the following operation parameters into configure file (*msconvert.config*):
 ```
 mzML=true
-
 zlib=true
-
 mz64=true
-
 inten64=true
-
 simAsSpectra=true
-
 filter=”peakPicking vendor msLevel=1-2
 ```
 Command line:
