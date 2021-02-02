@@ -1,0 +1,1 @@
+DIA-MS2pep is well-compatible to Linux system users. For Windows system users, the setup of a Unix environment (Cygwin) is required (The installation process is automated and not complicated). DIA-MS2pep require Perl programming language (versions 5.26, or above), including the Perl modules including “Math”, “MIME”, “Statistics”. 
