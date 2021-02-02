@@ -47,7 +47,7 @@ OR
 One file named “demo_DIA.mzML.DIA_acquisition_window.txt” will be generated in the current directory.
 
 ## 4.       Run DIA_pseudoMS2.pl to generate the pseudo-spectra (.mgfs) 
-** Usage: DIA_pseudoMS2.pl <Filename> <ms2 mass tolerance ppm> **
+** Usage: ** `DIA_pseudoMS2.pl <Filename> <ms2 mass tolerance ppm> `
 
 -Filename: It doesn’t contain the file extension, and blank space in filename is not allowed in filename to avoid the misinterpretation of commands in Linux environment.
 
