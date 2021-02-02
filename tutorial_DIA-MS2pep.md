@@ -15,8 +15,8 @@ DIA-MS2pep is well-compatible to Linux system users. For Windows system users, t
 MSconvert in ProteoWizard is recommended tool to convert the raw MS data to mzML files.
 
 One can save the following operation parameters into configure file (*msconvert.config*):
-
-<mzML=true
+```
+mzML=true
 
 zlib=true
 
@@ -26,8 +26,8 @@ inten64=true
 
 simAsSpectra=true
 
-filter=”peakPicking vendor msLevel=1-2>
-
+filter=”peakPicking vendor msLevel=1-2
+```
 Command line:
 
 `<msconvert -c msconvert.config demo_DIA.raw > ` 
