@@ -13,17 +13,17 @@ use IsotopeDistribution;
 $| = 1;
 
 
-if($#ARGV < 6){
-	print "Usage: script [filename] [dir] [ms1ppm] [ms2ppm] [PTM_or_not] [fasta]
+if($#ARGV < 5){
+	print "Usage: script [filename] [ms1ppm] [ms2ppm] [PTM_or_not] [fasta]
 	";
 }
 my $filename = $ARGV[0];
-my $dir = $ARGV[1];
+my $dir = "MS2pep";
 my $outfilename = "${filename}.Calmz.mgf";
-my $ms1_ppm_tolerence = $ARGV[3]; #ppm
-my $ms2_ppm_tolerence = $ARGV[4]; #ppm
-my $ptm = $ARGV[5];
-my $fastafile = $ARGV[6];
+my $ms1_ppm_tolerence = $ARGV[2]; #ppm
+my $ms2_ppm_tolerence = $ARGV[3]; #ppm
+my $ptm = $ARGV[4];
+my $fastafile = $ARGV[5];
 
 my $unimod_info = readmodxml();
 
