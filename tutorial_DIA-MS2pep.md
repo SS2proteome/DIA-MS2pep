@@ -84,7 +84,7 @@ intensity_transform = 0
 
 **7.       Run *DIA_data_refinement.pl* (DIA-MS2pep/Scripts/SearchDataRefinement/MSFragger/)**
 
-**Usage:** `DIA_data_refinement.pl <file> MS2pep <ms1ppm> <ms2ppm> <PTM> <fasta>`
+**Usage:** `DIA_data_refinement.pl <file> <ms1ppm> <ms2ppm> <PTM> <fasta>`
 
 For peptide modificaiton searhing, **"unimod.xml"**, a file of modification database, is required (It can be download from http://www.unimod.org/downloads.html).
 
