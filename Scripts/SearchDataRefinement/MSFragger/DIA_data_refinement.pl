@@ -20,10 +20,10 @@ if($#ARGV < 5){
 my $filename = $ARGV[0];
 my $dir = "MS2pep";
 my $outfilename = "${filename}.Calmz.mgf";
-my $ms1_ppm_tolerence = $ARGV[2]; #ppm
-my $ms2_ppm_tolerence = $ARGV[3]; #ppm
-my $ptm = $ARGV[4];
-my $fastafile = $ARGV[5];
+my $ms1_ppm_tolerence = $ARGV[1]; #ppm
+my $ms2_ppm_tolerence = $ARGV[2]; #ppm
+my $ptm = $ARGV[3];
+my $fastafile = $ARGV[4];
 
 my $unimod_info = readmodxml();
 
@@ -1643,10 +1643,10 @@ sub iso_peak_check{
 		}else{
 			my $measured_ppm = ppm($curr_mz,$cal_premz);
 			$measured_pre_SN = $curr_int / (1 + $lowest_sig);
-			if($measured_pre_SN < 3){
-				$index++;
-				next;
-			}
+			#if($measured_pre_SN < 3){
+			#	$index++;
+			#	next;
+			#}
 			my @obs_iso_distribution;
 			my @obs_ppm;
 			my @obs_mz;
