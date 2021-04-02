@@ -11,7 +11,7 @@ DIA-MS2pep require Perl programming language (versions 5.26), including the Perl
 
 3.       Percolator (Version 3.02.1)
 
-Two options to run DIA-MS2pep:
+## Two options to run DIA-MS2pep:
 ## 1. Step-by-step 
 
 **1).       Convert Raw files to mzML files**
