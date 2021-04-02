@@ -1,0 +1,127 @@
+package MassAccuracy;
+
+#
+# EM Likehood estimation joint probability function
+# 
+#
+
+use strict;
+use Data::Dumper;
+my $PI = 4 * atan2(1, 1);
+my $limit = 1.0E-3;
+
+# my $file = shift;
+# my @ppms;
+# open(f,$file) or die "$!\n";
+# #print $file;
+# while(<f>){
+	# my @line = split /\t/,$_;
+	# #print $line[7],"\t",$line[8],"\n";
+	# #print $line[7],"\t",$line[8],"\n";
+	# push @ppms, $line[8] if $line[7] !~ /REV_/ && $line[2] < 0.01;
+# }
+# close(f);
+#print Dumper \@ppms;
+
+#print Dumper MassAccuracy(\@ppms);
+
+sub MassAccuracy{
+	my $ppms = shift;
+	my @ppm = sort{$a<=>$b}@{$ppms};
+
+	my ($max,$min) = @ppm[-1,0];
+	my $initial = $max - $min;
+	my $average = ave(\@ppm);
+	my $std = stdev(\@ppm,$average);
+	
+	print "Ave: $average; std: $std\n";
+	# initial probability of true hits;
+	# prob1 = ||{xi >= u - 2s, xi <= u + 2s}||/n ; 
+	# u is mean or average; s is standard deviation
+	# ||*|| means the member number of one assemble
+
+	my $prob1 = sub{
+			my ($data,$ave_,$std_) = (@_);
+			my $n;
+			map{
+				if(abs($_-$ave_)<=2*$std_){
+					$n++;
+					#push @ppm_2s,$_;
+				}
+			}@{$data};
+			return $n;
+		}->(\@ppm,$average,$std)/$#ppm;
+
+	my $prob2 = 1 - $prob1; # this is the prob. of random hits
+	
+	print "prob1; $prob1; prob2: $prob2\n";
+	my ($current_std,$current_ave,$prob1_,$prob2_) = EM_iterator($average,$std,\@ppm,$prob1,$prob2,$initial);
+	return ($current_ave, $current_std,$prob1_,$prob2_);
+}
+
+
+sub EM_iterator{
+	my ($last_ave,$last_std,$data,$prob1_,$prob2_,$initial) = (@_);
+	my ($current_std,$current_ave);
+	my ($temp1,$temp2,$temp3,$temp4);
+	my $prob_x_w2 = 1/$initial;
+	map{
+		$temp1 += post_function(normal_function($last_ave,$last_std,$_),$prob1_,$prob_x_w2,$prob2_); # sum of p(w1|x)
+		$temp2 += post_function(normal_function($last_ave,$last_std,$_),$prob1_,$prob_x_w2,$prob2_)*$_; # sum of p(w1|x)*x
+
+		$temp3 += post_function(normal_function($last_ave,$last_std,$_),$prob1_,$prob_x_w2,$prob2_)*(($_-$last_ave)**2); # sum of p(w1|x)*(x-s)^2
+	}@{$data};
+	$current_ave = $temp2/$temp1;
+	$current_std = sqrt($temp3/$temp1);
+	$prob1_ = $temp1/$#$data;
+	$prob2_ = 1 - $prob1_;
+	($temp1,$temp2,$temp3,$temp4)=(0,0,0,0);
+	# print join "\n",$current_ave,$current_std,$prob1_,$prob2_,"";
+	# my $time_;
+	while((abs($last_ave-$current_ave) + abs($last_std-$current_std)) >= $limit){
+		map{
+			$temp1 += post_function(normal_function($last_ave,$last_std,$_),$prob1_,$prob_x_w2,$prob2_); # sum of p(w1|x)
+			$temp2 += post_function(normal_function($last_ave,$last_std,$_),$prob1_,$prob_x_w2,$prob2_)*$_; # sum of p(w1|x)*x
+			$temp3 += post_function(normal_function($last_ave,$last_std,$_),$prob1_,$prob_x_w2,$prob2_)*(($_-$last_ave)**2); # sum of p(w1|x)*(x-s)^2
+		}@{$data};
+		($last_ave,$last_std) = ($current_ave,$current_std);
+		$current_ave = $temp2/$temp1;
+		$current_std = sqrt($temp3/$temp1);
+		$prob1_ = $temp1/$#$data;
+		$prob2_ = 1 - $prob1_;
+		#print ++$time_,"\n";
+		#print join "\n",$current_ave,$current_std,$prob1_,$prob2_,"";
+		($temp1,$temp2,$temp3,$temp4)=(0,0,0,0);
+	}
+	return ($current_std,$current_ave,$prob1_,$prob2_);
+}
+
+sub post_function{ #posterior probability calculation of true hits
+	my ($prob_x_w1,$prob_1,$prob_x_w2,$prob_2) = (@_);
+	my $prob_w1_x = ($prob_x_w1*$prob_1)/($prob_x_w1*$prob_1+$prob_x_w2*$prob_2);
+	return $prob_w1_x;	
+}
+
+sub normal_function{ # p(x|w1) probability calculation
+	my ($ave_,$std_,$x) = (@_);
+	my $prob = exp(-($x-$ave_)**2/(2*($std_**2)))/(sqrt(2*$PI)*$std_);
+	#print "exp(-($x-$ave_)/(2*($std_**2)))/(sqrt(2*$PI)*$std_)\n";
+	#print $x,"\t",$prob,"\n";
+	return $prob;
+}
+
+sub ave{ # Average calculation
+	my $data = shift;
+	my ($sum);
+	map {$sum += $_}@{$data};
+	return $sum/$#$data;
+}
+
+sub stdev{ # Standard deviation calculation
+	my ($data,$ave_) = (@_);
+	my $delta_sum;
+	map {$delta_sum += ($_ - $ave_)**2}@{$data};
+	return sqrt($delta_sum/$#$data);
+}
+
+1;
