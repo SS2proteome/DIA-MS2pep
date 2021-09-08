@@ -75,7 +75,7 @@ One file named “demo_DIA.mzML.DIA_acquisition_window.txt” will be generated.
 
 -Output: After the running of *DIA_pseudoMS2.pl* is finished, one can find the pseudo-mgf file in the folder of “MS2pep”. The name and number of pseudo-mgf file(s) is dependent on the isolation window size. If one fixed-set window size (S) is set for demo_DIA.raw, there will be only one pseudo-mgf file in folder of “MS2pep”, names as “w_S_demo_DIA.mgf”. If several variable window sizes are set (S1, S2, …, Sn), multiple pseudo-mgf files will be generated, named as “w_S1_demo_DIA.mgf”, “w_S2_demo_DIA.mgf”,…, “w_Sn_demo_DIA.mgf”.
 
-Or, DIA-MS2pep supports parallelizaiton of computation, **pseudo_ms2_multiforks.pl**.
+Or, DIA-MS2pep supports parallelization of computation, **pseudo_ms2_multiforks.pl**.
 
 **Usage:** `pseudo_ms2_multiforks.pl <Filename> <ms2ppm> <max_processes>`
 
@@ -103,7 +103,7 @@ intensity_transform = 0
 
 **7).       Run *DIA_data_refinement.pl* (Scripts/SearchDataRefinement/MSFragger/)**
 
-**Usage:** `DIA_data_refinement.pl <file> <ms1ppm> <ms2ppm> <PTM> <fasta>`
+**Usage:** `DIA_data_refinement.pl <file> <ms1ppm> <ms2ppm> <PTM> <ptm_search> <fasta>`
 
 For peptide modificaiton searhing, **"unimod.xml"**, a file of modification database, is required (It can be download from http://www.unimod.org/downloads.html).
 
