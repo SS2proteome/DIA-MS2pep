@@ -20,6 +20,7 @@ MSFragger_search_engine = $MSFragger_search_engine
 MSFragger_search_params = $MSFragger_search_params
 PTM = $PTM 
 modification_search = $modification_search
+max_processes = $max_processes
 " 
 
 # Generating pesudo-ms2 spectra by reading mgf and mzML files
@@ -31,7 +32,7 @@ do
 	perl $CodeDir/DIA_acquistion_window_generator.pl $file.mzML 
 	echo $file 
 	echo "Generating pseudo-ms2 spectra in $dir/MS2pep"
-	perl $CodeDir/DIA_pesudo_MS2.pl $file MS2pep $ms2ppm # MS2pep is default name of the folder for storage of pseudo-ms2 spectra
+	perl $CodeDir/DIA_pesudo_MS2.pl $file MS2pep $ms2ppm $max_processes # MS2pep is default name of the folder for storage of pseudo-ms2 spectra
 done
 
 test ! -f ${dir}/$MSFragger_search_engine && cp ${CodeDir}/$MSFragger_search_engine ${dir}/MS2pep
