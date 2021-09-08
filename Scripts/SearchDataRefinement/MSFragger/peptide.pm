@@ -479,7 +479,7 @@ sub bin_mode_fragmentation{
 sub calmz{
 	my ($peptide,$charge) = @_;
 	
-	print STDERR $peptide,"\n";
+	#print STDERR $peptide,"\n";
 	
 	while($peptide =~ /(.)\[([^][]+)\]/g){
 		my $aa = $1;
@@ -493,11 +493,11 @@ sub calmz{
 	}
 	
 	my $monoMass;
-	print STDERR $peptide,"\n";
+	#print STDERR $peptide,"\n";
 	
 	my %AAs;
 	my @AAs = split /(?=[[:upper:]]_?)/,$peptide;
-	print STDERR Dumper \@AAs;
+	#print STDERR Dumper \@AAs;
 	foreach my $aa(@AAs){
 		$monoMass += $mono_aa{$aa};
 	}
