@@ -1,8 +1,8 @@
 # DIA-MS2pep
 
-DIA-MS2pep is a library-free tool of Data-Independent Acquisiton (DIA) data analysis, enabling to identify directly from DIA data without a pre-built spectral library. DIA-MS2pep can also identify the peptides with a putative modification. 
-DIA-MS2pep is an open source tool, and is compatible to Linux system users. For Windows system users, the setup of a Unix environment (Cygwin) is required (The installation process is automated and not complicated). 
-DIA-MS2pep require Perl programming language (versions 5.26), including the Perl modules including *Math*, *MIME*, *Statistics*. 
+DIA-MS2pep is a spectrum-centric tool of Data-Independent Acquisiton (DIA) data analysis, and can identify directly from DIA data without a pre-built spectral library. DIA-MS2pep can also identify the peptides with a putative modification. 
+DIA-MS2pep is an open source tool, compatible to Linux system users. For Windows system users, the setup of a Unix environment (Cygwin) is required (The installation process is automated and not complicated). 
+DIA-MS2pep require Perl programming language (versions 5.26), including the Perl modules including *Math*, *MIME*, *Statistics* and *Parallel::ForkManager*. 
 
 ## External tools:
 1.       Msconvert (ProteoWizard, Version 3.0.9974)
@@ -10,6 +10,15 @@ DIA-MS2pep require Perl programming language (versions 5.26), including the Perl
 2.       MSFragger (Version 2.4, or above)
 
 3.       Percolator (Version 3.02.1)
+
+## DIA-MS2pep software
+DIA-MS2pep comprises of four main components: 
+1. DIA/SWATH_pesudo_MS2: generation of pseudo-spectra from DIA data, where we provide two scripts for Obitrap and TripleTOF data, respectively.
+2. MSFragger_runner: implementation of MSFragger to perform large precursor mass database search.
+3. DIA/SWATH_data_refinement: verification of precursor evidence, searching for modified forms and computation of auxiliary peptide scores
+4. Percolator_runner: implementation of Percolator to validate the peptide hits at PSM, peptide and protein level. 
+
+
 
 ## Two options to run DIA-MS2pep:
 ## 1. Step-by-step 
