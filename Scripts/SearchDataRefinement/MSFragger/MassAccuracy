@@ -66,10 +66,12 @@ sub EM_iterator{
 	my ($temp1,$temp2,$temp3,$temp4);
 	my $prob_x_w2 = 1/$initial;
 	map{
-		$temp1 += post_function(normal_function($last_ave,$last_std,$_),$prob1_,$prob_x_w2,$prob2_); # sum of p(w1|x)
-		$temp2 += post_function(normal_function($last_ave,$last_std,$_),$prob1_,$prob_x_w2,$prob2_)*$_; # sum of p(w1|x)*x
+		my $i = $_;
+		my $post_f = post_function(normal_function($last_ave,$last_std,$i),$prob1_,$prob_x_w2,$prob2_);
+		$temp1 += $post_f;
+		$temp2 += $post_f * $i; # sum of p(w1|x)*x
 
-		$temp3 += post_function(normal_function($last_ave,$last_std,$_),$prob1_,$prob_x_w2,$prob2_)*(($_-$last_ave)**2); # sum of p(w1|x)*(x-s)^2
+		$temp3 += $post_f *(($i-$last_ave)*($i-$last_ave)); # sum of p(w1|x)*(x-s)^2
 	}@{$data};
 	$current_ave = $temp2/$temp1;
 	$current_std = sqrt($temp3/$temp1);
@@ -80,9 +82,12 @@ sub EM_iterator{
 	# my $time_;
 	while((abs($last_ave-$current_ave) + abs($last_std-$current_std)) >= $limit){
 		map{
-			$temp1 += post_function(normal_function($last_ave,$last_std,$_),$prob1_,$prob_x_w2,$prob2_); # sum of p(w1|x)
-			$temp2 += post_function(normal_function($last_ave,$last_std,$_),$prob1_,$prob_x_w2,$prob2_)*$_; # sum of p(w1|x)*x
-			$temp3 += post_function(normal_function($last_ave,$last_std,$_),$prob1_,$prob_x_w2,$prob2_)*(($_-$last_ave)**2); # sum of p(w1|x)*(x-s)^2
+			my $i = $_;
+			my $post_f = post_function(normal_function($last_ave,$last_std,$i),$prob1_,$prob_x_w2,$prob2_);
+			next if $post_f < 0 ;
+			$temp1 += $post_f;
+			$temp2 += $post_f * $_; # sum of p(w1|x)*x
+			$temp3 += $post_f *(($i-$last_ave)*($i-$last_ave)); # sum of p(w1|x)*(x-s)^2
 		}@{$data};
 		($last_ave,$last_std) = ($current_ave,$current_std);
 		$current_ave = $temp2/$temp1;
