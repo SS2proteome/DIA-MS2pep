@@ -3,16 +3,16 @@
 MSFragger=$1
 params=$2
 file=$3
-modification_search=$4
+ptm_search=$4
 
-lower=-100
-upper=400
+lower=-150
+upper=500
 
 charge_range=$(echo {1..5})
 
 
 
-if (( modification_search  == 1 ))
+if (( ptm_search  == 1 ))
 then
 	for wmgf in w_[0-9]*_${file}.mgf
 	do
@@ -32,9 +32,10 @@ then
 			java -d64 -Xmx30G -jar $MSFragger z$z.$window.$params temp_[0-9]*$wmgf 2>/dev/null 
 			awk -vp=1 '/<spectrum_query/{p=0;t=1}p;/<\/msms_run_summary>/{t=0};t;END{print "</msms_run_summary>\n</msms_pipeline_analysis>"}' temp_[0-9]_${wmgf/.mgf/}.pepXML > ${wmgf/.mgf/}.pepXML  
 			mv ${wmgf/mgf/pepXML} z$z.${wmgf/mgf/pepXML}
-			rm -rf temp_[0-9]*$mgf
-			rm -rf temp_[0-9]*${mgf/.mgf/}.pepXML
+			
 		done
+		rm -rf temp_[0-9]*$mgf
+		rm -rf temp_[0-9]*${mgf/.mgf/}.pepXML
 	else
 		for z in $charge_range
 		do
@@ -69,9 +70,10 @@ else
 			
 			awk -vp=1 '/<spectrum_query/{p=0;t=1}p;/<\/msms_run_summary>/{t=0};t;END{print "</msms_run_summary>\n</msms_pipeline_analysis>"}' temp_[0-9]_${wmgf/.mgf/}.pepXML > ${wmgf/.mgf/}.pepXML  
 			mv ${wmgf/mgf/pepXML} z$z.${wmgf/mgf/pepXML}
-			rm -rf temp_[0-9]*$mgf
-			rm -rf temp_[0-9]*${mgf/.mgf/}.pepXML
+			
 		done
+		rm -rf temp_[0-9]*$mgf
+		rm -rf temp_[0-9]*${mgf/.mgf/}.pepXML
 	else
 		for z in $charge_range
 		do
