@@ -12,16 +12,18 @@ use peptide;
 use Math;
 use ChargeAssignment;
 use IsotopeDistribution;
+use MassAccuracy;
 $| = 1;
 
 
 my $filename = $ARGV[0];
 my $dir = $ARGV[1];
-my $outfilename = "${filename}.Calmz.mgf";
+my $outfilename = "${filename}.pesudo.mgf";
 my $ms1_ppm_tolerence = $ARGV[2]; #ppm
 my $ms2_ppm_tolerence = $ARGV[3]; #ppm
 my $ptm = $ARGV[4];
-my $fastafile = $ARGV[5];
+my $ptmfind = $ARGV[5];
+my $fastafile = $ARGV[6];
 
 my $unimod_info = readmodxml();
 
@@ -90,6 +92,7 @@ my $proton = 1.00727646677;
 my $ms1_file = "$filename.ms1";
 my $mzML_file = "$filename.mzML";
 my $mgf_file = "$filename.mgf";
+my $ms1_min_intensity ;
 
 # my $mgffile = "$dir/".$ARGV[2];
 # my $outfile = "$dir/".$ARGV[3];
@@ -109,7 +112,8 @@ my $mgffile;
 my $pepxmlfile;
 
 
-my @ppms;
+my @pre_ppms;
+my @frag_ppms;
 my $scan;
 my $ms1scan;
 my $ms2scan;
@@ -129,11 +133,15 @@ while(<FH>){
 	chomp;
 	next if $. == 1;
 	my @line = split /\t/,$_;
-	if($line[-1] >100){$line[-1] = 100;}
-	$SWATH_window{$line[-2]}{size} = $line[-1];
-	$SWATH_window{$line[-2]}{lower} = $line[1];
-	$SWATH_window{$line[-2]}{higher} = $line[2];
-	$isolationlist{$line[-2]} = $line[0];
+	my $size= $line[-1];
+	my $premz = $line[-2];
+	my $start = $line[1];
+	my $end = $line[2];
+	if($size >100){$size = 100;}
+	$SWATH_window{$premz}{size} = $size;
+	$SWATH_window{$premz}{lower} = $start;
+	$SWATH_window{$premz}{higher} = $end;
+	$isolationlist{$premz} = $line[0];
 	$num_of_windows++;
 }
 close(FH);
@@ -188,6 +196,8 @@ open(MS1,$ms1_file) or die "$!\n";
 my %ms1_peaks;
 my %ms1_peaks_intensity;
 my %ms1_file_position;
+my $ms1_min_intensity_tmp;
+my @ms1_min_intensity_es;
 while(<MS1>){
 	chomp;
 	if(/^S/){
@@ -195,9 +205,24 @@ while(<MS1>){
 		printf "\r$cycle";
 		my $pos = tell(MS1);
 		$ms1_file_position{sprintf("%06.f",$cycle)} = $pos;
+		push @ms1_min_intensity_es,$ms1_min_intensity_tmp if $ms1_min_intensity_tmp != 100000;
+	}
+	if(/^I/){
+		$ms1_min_intensity_tmp = 100000;
+	}
+	if(/^[0-9]/){
+		my @line = split / /,$_;
+		if($ms1_min_intensity_tmp > $line[1]){
+			$ms1_min_intensity_tmp = $line[1];
+		}
+		#print "\t",$ms1_min_intensity_tmp;
 	}
 }
 #close(FH);
+#print Dumper \@ms1_min_intensity_es;
+$ms1_min_intensity = median([@ms1_min_intensity_es]);
+print "ms1_min_intensity: $ms1_min_intensity\n";
+#exit;
 print "\n";
 
 print "\n\n*****Read mgf file: $mgf_file!\n";
@@ -451,8 +476,11 @@ foreach my $scan_list (@pepxml_start_scan){
 				$expect = $1;
 				if(length($peptide) and $strip_peptide =~ /^[A-Z_]+$/ ){# and $start_scan =~ /^108741$/ ){#){ 
 					printf "\r$start_scan";
-					# next if $start_scan < 20000;
-					# last if $start_scan > 20100;
+					# next if $start_scan < 8000;
+					# #next if $assumed_charge != 3;
+					# last if $start_scan > 15000;
+					#next if $spectrum !~ /res2_napedro_L120420_009_SW-400AQUA_x0020__x0020_human_x0020_2ul_x0020_dilution_x0020_2.8419/;
+	 				
 					my $exp_premz;
 					my $exp_int;
 					my $exp_SN;
@@ -508,17 +536,18 @@ foreach my $scan_list (@pepxml_start_scan){
 					$exp_premz = $ios_topic_mz;
 					$exp_int = $ios_topic_int;
 					
-					my ($mod_Iso_tag,$mod_exp_premz,$mod_exp_int,$mod_ppm_obs,$massdiff,$matched_y,$matched_b,$matched_int_sd,$ppm_m,$matched_int,$matched_coverage,$matched_mod_type,$matched_int_with_mod,$mod_SN,$matched_mzs_type,$match_type,$position,$mod_name,$unimod_mass,$mod_peptide,$PTMSiteScore,$PTMSiteProb,$new_calmz);
+					my ($mod_Iso_tag,$mod_exp_premz,$mod_exp_int,$mod_ppm_obs,$massdiff,$matched_y,$matched_b,$matched_int_sd,$ppm_m,$matched_int,$matched_coverage,$matched_mod_type,$matched_int_with_mod,$mod_SN,$matched_mzs_type,$match_type,$position,$mod_name,$unimod_mass,$mod_peptide,$PTMSiteScore,$PTMSiteProb,$new_calmz,$ppm_s);
 
 					my $tag_ = $ios_topic_peaks ? "Iso" : "Mod"; 
 
-					
-					if($ios_topic_peaks == 0 && $expect < 1 && $next_tag == 0 and !$multiple_hits{$tag_}{$start_scan}{$protein}++){
+					$multiple_hits{$tag_}{$start_scan}{$protein}++;
+					if($ptmfind && $ios_topic_peaks == 0 && $expect < 1 && $next_tag == 0 and $multiple_hits{$tag_}{$start_scan}{$protein} == 1){
+					#if($spectrum =~ /res2_napedro_L120420_009_SW-400AQUA_x0020__x0020_human_x0020_2ul_x0020_dilution_x0020_2.8419/){
 					
 						$ms1profile_ = defined $ms1profile_ ? $ms1profile_ : MS1_profile($prems1scan,$start_scan);
 						$ms2profile_ = defined $ms2profile_ ? $ms2profile_ : MS2_profile($start_scan);
 
-						($mod_Iso_tag,$mod_exp_premz,$mod_exp_int,$mod_ppm_obs,$massdiff,$matched_y,$matched_b,$matched_int_sd,$ppm_m,$matched_int,$matched_coverage,$matched_mod_type,$matched_int_with_mod,$mod_SN,$position,$mod_name,$unimod_mass,$mod_peptide,$PTMSiteScore,$PTMSiteProb,$new_calmz) = find_mod($prems1scan,$cal_premz,$assumed_charge,$start_scan,$peptide,$pepLen,$strip_peptide,$spectrum,$ms1profile_,$ms2profile_,$peptide_prev_aa,$peptide_next_aa);
+						($mod_Iso_tag,$mod_exp_premz,$mod_exp_int,$mod_ppm_obs,$massdiff,$matched_y,$matched_b,$matched_int_sd,$ppm_m,$matched_int,$matched_coverage,$matched_mod_type,$matched_int_with_mod,$mod_SN,$position,$mod_name,$unimod_mass,$mod_peptide,$PTMSiteScore,$PTMSiteProb,$new_calmz,$ppm_s) = find_mod($prems1scan,$cal_premz,$assumed_charge,$start_scan,$peptide,$pepLen,$strip_peptide,$spectrum,$ms1profile_,$ms2profile_,$peptide_prev_aa,$peptide_next_aa);
 						
 						if($mod_Iso_tag){
 							#print Dumper ($mod_Iso_tag,$mod_exp_premz,$mod_exp_int,$mod_ppm_obs,$massdiff,$matched_y,$matched_b,$matched_int_sd,$ppm_m,$matched_int,$matched_coverage,$matched_mod_type,$matched_int_with_mod,$mod_SN,$position,$mod_name,$unimod_mass,$mod_peptide,$PTMSiteScore,$PTMSiteProb,$new_calmz);exit;
@@ -535,7 +564,8 @@ foreach my $scan_list (@pepxml_start_scan){
 						}
 					}
 
-					if ($ios_topic_peaks and !$multiple_hits{$tag_}{$start_scan}{$protein}++){
+					if ($ios_topic_peaks and $multiple_hits{$tag_}{$start_scan}{$protein} == 1){
+					#if ($spectrum =~ /res2_napedro_L120420_009_SW-400AQUA_x0020__x0020_human_x0020_2ul_x0020_dilution_x0020_2.8419/){
 						my $peaks ;
 						
 						if(exists $pseudoms2_data{$spectrum}){
@@ -545,9 +575,17 @@ foreach my $scan_list (@pepxml_start_scan){
 							$pseudoms2_data{$spectrum} = $peaks;
 						}
 						my $theoretical_mz_table = peptide::fragmentation($peptide,$assumed_charge);
-						($matched_mzs_type,$matched_int,$matched_int_sd,$ppm_m) = ms2spectra_match($theoretical_mz_table,$peaks);
+						($matched_mzs_type,$matched_int,$matched_int_sd,$ppm_m,$ppm_s) = ms2spectra_match($theoretical_mz_table,$peaks);
+						# print STDERR join "\t", ("---",$spectrum,$peptide,$matched_mzs_type,$matched_int,$matched_int_sd,$ppm_m,$ppm_s),"\n";
+						# if ($peptide =~ /HTV/){
+							# print Dumper $spectrum,$peptide;
+							# print Dumper $matched_int,$matched_int_sd,$ppm_m,$ppm_s;
+							
+						# }
+						#exit if $start_scan > 8500;
 						($match_type,$matched_coverage) = tag($matched_mzs_type);
 						($matched_y,$matched_b) = ($match_type->{"Y"},$match_type->{"B"});
+						#exit;
 					}
 					if ($expect <= 0.01 && !$uniq_pl{PreCheckPPM}{$peptide}++){
 						$n{$filename}{PreCheckPPM}{$protein=~/REV_/?"Decoy":"Target"}++ ;
@@ -561,7 +599,11 @@ foreach my $scan_list (@pepxml_start_scan){
 							$n{$filename}{CheckPPM_Isotopic}{$protein=~/REV_/?"Decoy":"Target"}{$ios_topic_peaks}++; 
 						}
 						my $ppm = $ios_topic_ppm;
-						push @ppms, $ppm if $expect <= 0.01 and $protein !~ /REV_/ && $ios_topic_peaks != 0;
+						if ($expect <= 0.01 && $protein !~ /REV_/ && $ios_topic_peaks ){
+							push @pre_ppms, $ppm ;
+							push @frag_ppms, $ppm_m ;
+						}
+						
 						my $centermz = $ms2toms1{$start_scan}->[1];
 						
 						if($mod_Iso_tag > 0){
@@ -582,7 +624,7 @@ foreach my $scan_list (@pepxml_start_scan){
 							$expect,
 							$spectrum,
 							$assumed_charge,
-							$cal_premz,
+							$exp_premz,
 							$strip_peptide,
 							$protein,
 							$ppm,
@@ -591,9 +633,22 @@ foreach my $scan_list (@pepxml_start_scan){
 							[
 								$spectrum.".".$assumed_charge.".".$hit_rank,($protein =~ /REV_/ ? -1 : 1),$start_scan,$ios_topic_peaks ? $precursor_neutral_mass : $calc_neutral_pep_mass,$calc_neutral_pep_mass,$hyperscore,($hyperscore- $nextscore),log($expect),$num_matched_ions/$tot_num_ions,$precursor_neutral_mass,$pepLen,$assumed_charge == 1 ? 1 :0, $assumed_charge == 2 ? 1 :0, $assumed_charge == 3 ? 1 :0, $assumed_charge == 4 ? 1 :0, $assumed_charge == 5 ? 1 :0, $assumed_charge == 6 ? 1 :0,$num_missed_cleavages,($precursor_neutral_mass - $calc_neutral_pep_mass),abs($precursor_neutral_mass - $calc_neutral_pep_mass), $ios_topic_peaks == 1 ? 1 : 0,$ios_topic_peaks == 2 ? 1 : 0, $ios_topic_peaks == 3 ? 1 : 0, $ios_topic_peaks >= 4 ? 1 : 0, log($exp_int+1),$retention_time_sec,$exp_SN
 							],
-							[$matched_y,$matched_b,$matched_int_sd,$ppm_m,$matched_int,$matched_coverage,$mod_name,$PTMSiteScore,$PTMSiteProb,$unimod_mass]
+							[$matched_y,$matched_b,$matched_int_sd,$ppm_m,$matched_int,$matched_coverage,$mod_name,$PTMSiteScore,$PTMSiteProb,$unimod_mass,$ppm_s,$ppm]
 						];
-						
+						# print STDERR join "\t",
+						# $expect,
+							# $spectrum,
+							# $assumed_charge,
+							# $exp_premz,
+							# $strip_peptide,
+							# $protein,
+							# $ppm,
+							
+						# $cal_premz,$exp_int,$ios_topic_peaks,$peptide,$expect,$protein,$strip_peptide,$peptide_prev_aa.".".$peptide.".".$peptide_next_aa,$centermz,
+							
+								# $spectrum.".".$assumed_charge.".".$hit_rank,($protein =~ /REV_/ ? -1 : 1),$start_scan,$ios_topic_peaks ? $precursor_neutral_mass : $calc_neutral_pep_mass,$calc_neutral_pep_mass,$hyperscore,($hyperscore- $nextscore),log($expect),$num_matched_ions/$tot_num_ions,$precursor_neutral_mass,$pepLen,$assumed_charge == 1 ? 1 :0, $assumed_charge == 2 ? 1 :0, $assumed_charge == 3 ? 1 :0, $assumed_charge == 4 ? 1 :0, $assumed_charge == 5 ? 1 :0, $assumed_charge == 6 ? 1 :0,$num_missed_cleavages,($precursor_neutral_mass - $calc_neutral_pep_mass),abs($precursor_neutral_mass - $calc_neutral_pep_mass), $ios_topic_peaks == 1 ? 1 : 0,$ios_topic_peaks == 2 ? 1 : 0, $ios_topic_peaks == 3 ? 1 : 0, $ios_topic_peaks >= 4 ? 1 : 0, log($exp_int+1),$retention_time_sec,$exp_SN
+							# ,
+							# $matched_y,$matched_b,$matched_int_sd,$ppm_m,$matched_int,$matched_coverage,$mod_name,$PTMSiteScore,$PTMSiteProb,$unimod_mass,$ppm_s,$ppm,"\n";
 					
 					}
 				}
@@ -658,16 +713,42 @@ close(TMPOUT);
 
 #print STDERR Dumper \%search_res; exit;
 #print Dumper \%keep_specs;
-print Dumper "",$filename,\%xx; 
+print  Dumper \%n; 
 
 my $ppm_ave;
+my $frag_ppm_ave;
 my $ppm_sd;
+my $frag_ppm_sd;
 
-if (scalar @ppms){
-	$ppm_ave = ave(\@ppms);
-	$ppm_sd = stdev(\@ppms,$ppm_ave);
-	#print STDERR join "\t", $filename,$ppm_ave,$ppm_sd,"\n";
-	print join "\t", $filename,$ppm_ave,$ppm_sd,"\n";
+#print Dumper \@ppms;exit;
+
+if (scalar @pre_ppms){
+	$ppm_ave = ave(\@pre_ppms);
+	$ppm_sd = stdev(\@pre_ppms,$ppm_ave);;
+	printf ("\n\033[31m%s\t%s\t\033[32m%s\033[0m\n", $filename,"pre_ppm_ave: $ppm_ave","pre_ppm_sd: $ppm_sd");
+	print logfh join "\t", $filename,"pre_ppm_ave: $ppm_ave","pre_ppm_sd: $ppm_sd\n";
+	my ($prob1,$prob2);
+	($ppm_ave,$ppm_sd,$prob1,$prob2) = MassAccuracy::MassAccuracy(\@pre_ppms);
+	printf ("\n\033[31m%s\t%s\t\033[32m%s\033[0m\n", $filename,"pre_ppm_ave: $ppm_ave","pre_ppm_sd: $ppm_sd");
+	print logfh join "\t", $filename,"pre_ppm_ave: $ppm_ave","pre_ppm_sd: $ppm_sd\n";
+	print "prob1; $prob1; prob2: $prob2\n";
+	print logfh "prob1; $prob1; prob2: $prob2\n";
+	
+}
+
+
+if (scalar @frag_ppms){
+	$frag_ppm_ave = ave(\@frag_ppms);
+	$frag_ppm_sd = stdev(\@frag_ppms,$frag_ppm_ave);;
+	printf ("\n\033[31m%s\t%s\t\033[32m%s\033[0m\n", $filename,"frag_ppm_ave: $frag_ppm_ave","frag_ppm_sd: $frag_ppm_sd");
+	printf logfh join "\t",$filename,"frag_ppm_ave: $frag_ppm_ave","frag_ppm_sd: $frag_ppm_sd\n";
+	my ($prob1,$prob2);
+	($frag_ppm_ave,$frag_ppm_sd,$prob1,$prob2) = MassAccuracy::MassAccuracy(\@frag_ppms);
+	printf ("\n\033[31m%s\t%s\t\033[32m%s\033[0m\n", $filename,"frag_ppm_ave: $frag_ppm_ave","frag_ppm_sd: $frag_ppm_sd");
+	printf logfh join "\t", $filename,"frag_ppm_ave: $frag_ppm_ave","ppm_sd: $frag_ppm_sd\n";
+	print "prob1; $prob1; prob2: $prob2\n";
+	print logfh "prob1; $prob1; prob2: $prob2\n";
+	
 }
 
 #print STDERR Dumper \%search_res;
@@ -699,10 +780,11 @@ while(<TMP_INPUT>){
 	my $iso = $ref1->[2];
 	my $ref2 = [split /#/,$lines[10]];
 	my $ref3 = [split /#/,$lines[11]];
-	my $mod_name = $ref3->[6];	
+	my $mod_name = $ref3->[6];
+    my $frag_ppm_ = $ref3->[3];	
 
-	if(abs($ppm_ - $ppm_ave) < 3*$ppm_sd){
-		if(defined $mod_name){
+	if(abs($frag_ppm_ - $frag_ppm_ave) < 3*$frag_ppm_sd && abs($ppm_ave-$ppm_) < 3 * $ppm_sd  ){
+		if($mod_name){
 			if(abs($ppm_ - $ppm_ave) > $ppm_sd){
 				$keep = 0;
 			}
@@ -749,6 +831,7 @@ while(<TMP_INPUT>){
 }
 close(TMP_INPUT);
 #unlink "${dir}/tmp.$filename";
+print Dumper \%pepNum;
 
 my %peptide_with_aa_mutation;
 
@@ -775,7 +858,7 @@ foreach  my $title(keys %keep_specs){
 
 # retrieve the mutated peptide candidate using fasta 
 my %replaced_peptide_with_aa_mutation;
-#if($PTM_find){
+if($ptmfind){
 print "\n refine mutated peptide candidates by retrieve proteins in fasta\n";
 foreach my $pep (keys %peptide_with_aa_mutation){
 	foreach my $mod_name (keys %{$peptide_with_aa_mutation{$pep}}){ 
@@ -801,18 +884,19 @@ foreach my $pep (keys %peptide_with_aa_mutation){
 	}
 
 }
-#}
+}
 
 my $id;
 my %retrieved_list;
 my %retrieved_done_list;
-#if($PTM_find){
+if($ptmfind){
 #print Dumper \%replaced_peptide_with_aa_mutation;
 open(FASTA,"${dir}/$fastafile") or die "$! no $fastafile \n";
 while(<FASTA>){
 	my $line = $_;
 	if($line =~ />/ && $line !~ /REV_/){
 		my $id = $line;
+		$id =~ s/>//;
 		chomp($id);
 		my $seq;
 		($seq = <FASTA>);
@@ -827,7 +911,7 @@ while(<FASTA>){
 }
 close(FASTA);
 #print Dumper \%retrieved_list;
-#}
+}
 
 #exit;
 
@@ -837,9 +921,9 @@ my %m;
 my %iontype;
 my %uniq_pl;
 
-open(pinout,">${dir}/xx_${filename}.pin") or die  "${dir}/${filename}.pin $!";
-open(mgfout,">${dir}/xx_$outfilename") or die  "${dir}/$outfilename $!";
-open(PTMOut,">${dir}/xx_${filename}.PTM.tsv") or die  "${dir}/${filename}.PTM.tsv $!";
+open(pinout,">${dir}/${filename}.pin") or die  "${dir}/${filename}.pin $!";
+open(mgfout,">${dir}/$outfilename") or die  "${dir}/$outfilename $!";
+open(PTMOut,">${dir}/${filename}.PTM.tsv") or die  "${dir}/${filename}.PTM.tsv $!";
 print pinout join "\t", qw/SpecId	Label	ScanNr	ExpMass	CalcMass	hyperscore deltahyperscore lnExpect	IonFrac	Mass	PepLen	Charge1	Charge2	Charge3	Charge4	Charge5	Charge6	enzInt	dM	absdM	Iso1 Iso2 Iso3 Iso_ge_4 LnPreInt RTINSECONDS PreSN/;
 print PTMOut join "\t", qw/SpecId	Label	ScanNr	ExpMass	CalcMass	hyperscore deltahyperscore lnExpect	IonFrac	Mass	PepLen	Charge1	Charge2	Charge3	Charge4	Charge5	Charge6	enzInt	dM	absdM	Iso1 Iso2 Iso3 Iso_ge_4 LnPreInt RTINSECONDS PreSN/;
 print pinout "\t";
@@ -851,8 +935,8 @@ if(scalar @PTM_variable){
 	print PTMOut "\t";
 }
 
-print pinout join "\t",qw /Undefined_mod Y_ions n_Y_ions	B_ions n_B_ions matched_coverage n_matched_coverage matched_int matched_int_sd FragAveppm abs_FragAveppm Peptide	Proteins/;
-print PTMOut join "\t",qw /Undefined_mod Y_ions n_Y_ions	B_ions n_B_ions matched_coverage n_matched_coverage matched_int matched_int_sd FragAveppm abs_FragAveppm PTMScore Peptide	Proteins	PhosScore	PhosProbs PhosphoSiteloc Phosphosite_loc_or_not PTMSites /;
+print pinout join "\t",qw /Undefined_mod Y_ions n_Y_ions	B_ions n_B_ions matched_coverage n_matched_coverage matched_int matched_int_sd FragAveppm abs_FragAveppm FragSdppm Peptide	Proteins/;
+print PTMOut join "\t",qw /Undefined_mod Y_ions n_Y_ions	B_ions n_B_ions matched_coverage n_matched_coverage matched_int matched_int_sd FragAveppm abs_FragAveppm FragSdppm PTMScore Peptide	Proteins	PhosScore	PhosProbs PhosphoSiteloc Phosphosite_loc_or_not PTMSites /;
 print PTMOut "\n";
 print pinout "\n";
 
@@ -905,10 +989,10 @@ while(<MGF>){
 						my $window = $isolationlist{$centermz};
 
 						my ($matched_y,$matched_b);
-						my ($matched_mzs_type,$matched_int,$matched_int_sd,$ppm_m,$match_type,$matched_coverage);
+						my ($matched_mzs_type,$matched_int,$matched_int_sd,$ppm_m,$match_type,$matched_coverage,$ppm_s,$ppm);
 						my ($mod_Iso_tag,$mod_exp_premz,$mod_exp_int,$mod_ppm_obs,$mod_name,$PTMSiteScore,$PTMSiteProb,$unimod_mass);
 						my $mod_info = $keep_specs{$title}{$charge}{$exp_mz}->[2];
-							($matched_y,$matched_b,$matched_int_sd,$ppm_m,$matched_int,$matched_coverage,$mod_name,$PTMSiteScore,$PTMSiteProb,$unimod_mass) = @{$mod_info};
+							($matched_y,$matched_b,$matched_int_sd,$ppm_m,$matched_int,$matched_coverage,$mod_name,$PTMSiteScore,$PTMSiteProb,$unimod_mass,$ppm_s,$ppm) = @{$mod_info};
 						my $deisotope_peaks = deisotope([@ion]);
 
 						my $peptide_mod = $pep;#print STDERR "\r$title\t$peptide_mod\n";
@@ -934,7 +1018,7 @@ while(<MGF>){
 							$pep_for_fragmentation =~ s/T\[Phos\]/T[181.0140]/g;
 							$pep_for_fragmentation =~ s/Y\[Phos\]/Y[243.0297]/g;
 							my $theoretical_mz_table = peptide::fragmentation($pep_for_fragmentation,$charge);
-							($matched_mzs_type,$matched_int,$matched_int_sd,$ppm_m) = ms2spectra_match($theoretical_mz_table,[@ion]);
+							($matched_mzs_type,$matched_int,$matched_int_sd,$ppm_m,$ppm_s) = ms2spectra_match($theoretical_mz_table,[@ion]);
 							($match_type,$matched_coverage) = tag($matched_mzs_type);
 							($matched_y,$matched_b) = ($match_type->{"Y"},$match_type->{"B"});
 							
@@ -967,10 +1051,10 @@ while(<MGF>){
 										}
 									}
 									if($PhosSiteProb || $mod_name){
-										print PTMOut join "\t",(defined $mod_name ? 1:0), $matched_y+0,($matched_y+0)/length($strip_pep),$matched_b+0,($matched_b+0)/length($strip_pep),$matched_coverage,($matched_coverage+0)/length($strip_pep),$matched_int ? log($matched_int):0,$matched_int_sd,$ppm_m,abs($ppm_m),$PTMSiteScore||"-", $peptide_mod.(defined $mod_name ? ":(".$mod_name."[".$unimod_mass."]".")":""), $protein,$Phosscore||"-",$PhosSiteProb||"-",$PhosphoSiteloc,$phosphosite_loc_or_not,($PTMSiteProb||"-");
+										print PTMOut join "\t",( $mod_name ? 1:0), $matched_y+0,($matched_y+0)/length($strip_pep),$matched_b+0,($matched_b+0)/length($strip_pep),$matched_coverage,($matched_coverage+0)/length($strip_pep),$matched_int ? log($matched_int):0,$matched_int_sd,$ppm_m,abs($ppm_m),$ppm_s,$PTMSiteScore||"-", $peptide_mod.( $mod_name ? ":(".$mod_name."[".$unimod_mass."]".")":""), $protein,$Phosscore||"-",$PhosSiteProb||"-",$PhosphoSiteloc,$phosphosite_loc_or_not,($PTMSiteProb||"-");
 										print PTMOut "\n" ;
 									}else{
-										print pinout join "\t",(defined $mod_name ? 1:0), $matched_y+0,($matched_y+0)/length($strip_pep),$matched_b+0,($matched_b+0)/length($strip_pep),$matched_coverage,($matched_coverage+0)/length($strip_pep),$matched_int ? log($matched_int):0,$matched_int_sd,$ppm_m,abs($ppm_m), $peptide_mod.(defined $mod_name ? ":(".$mod_name."[".$unimod_mass."]".")":""), $protein;
+										print pinout join "\t",( $mod_name ? 1:0), $matched_y+0,($matched_y+0)/length($strip_pep),$matched_b+0,($matched_b+0)/length($strip_pep),$matched_coverage,($matched_coverage+0)/length($strip_pep),$matched_int ? log($matched_int):0,$matched_int_sd,$ppm_m,abs($ppm_m),$ppm_s, $peptide_mod.( $mod_name ? ":(".$mod_name."[".$unimod_mass."]".")":""), $protein;
 										print pinout "\n" ;
 									}
 									
@@ -979,7 +1063,8 @@ while(<MGF>){
 								if($expect < 1 ){
 									if ($PhosSiteProb){$mod_name = "Phos"};
 									print mgfout $line1;
-									print mgfout "PEPMASS=$keep_specs{$title}{$charge}{$exp_mz}->[0]->[0] $keep_specs{$title}{$charge}{$exp_mz}->[0]->[1]\n";
+									print mgfout "CalPEPMASS=$keep_specs{$title}{$charge}{$exp_mz}->[0]->[0] $keep_specs{$title}{$charge}{$exp_mz}->[0]->[1]\n";
+									print mgfout "PEPMASS=$exp_mz $keep_specs{$title}{$charge}{$exp_mz}->[0]->[1]\n";
 									print mgfout "CHARGE=${charge}+\n";
 									print mgfout "MOD=$mod_name\n" if($PhosSiteProb || $mod_name);;
 									print mgfout $line2;
@@ -1118,7 +1203,7 @@ sub readmodxml(){
 	my %uniq;
 	my @tmp;
 	my $dir = dirname(__FILE__);
-	open(MOD,"${dir}/unimod.xml") or die "No ${dir}/unimod.xml $!\n";
+	open(MOD,"${dir}/unimod.xml") or die "No ${dir}/unimod.xml, Please download the file of \"umimod.xml\" from http://www.unimod.org/downloads.html $!\n";
 	while(<MOD>){
 		if(m{<umod:mod title="([^"]+)"}){
 			$mod_title = $1;
@@ -1158,17 +1243,7 @@ sub readmodxml(){
 
 
 sub iso_peak_check{
-	my ($prems1scan,$cal_premz,$assumed_charge,$iso_require,$ms2scan) = @_;
-	#print Dumper $ms1_mz;
-	#print "prems1scan: $prems1scan\n";
-	# my $ms1scan_mz_list ;#= MS1file($prems1scan,$ms2scan);
-	# my $lowest_sig;
-	# if(exists $ms1scan_clean_data{$prems1scan}{$ms2scan}){
-		# ($ms1scan_mz_list,$lowest_sig) = @{$ms1scan_clean_data{$prems1scan}{$ms2scan}};
-	# }else{
-		# ($ms1scan_mz_list,$lowest_sig) = MS1file($prems1scan,$ms2scan);
-		# $ms1scan_clean_data{$prems1scan}{$ms2scan} = [$ms1scan_mz_list,$lowest_sig];
-	# }
+	my ($prems1scan,$cal_premz,$assumed_charge,$iso_require,$ms2scan,$peptide) = @_;
 	
 	my ($ms1scan_mz_list,$lowest_sig,$highest_sig);
 	if(exists $ms1scan_clean_data{$prems1scan}{$ms2scan}){
@@ -1177,18 +1252,13 @@ sub iso_peak_check{
 		($ms1scan_mz_list,$lowest_sig,$highest_sig) = MS1file($prems1scan,$ms2scan);
 		$ms1scan_clean_data{$prems1scan}{$ms2scan} =[$ms1scan_mz_list,$lowest_sig,$highest_sig];
 	}
-	
-	#my $ms1scan_mz_list = $ms1_peaks{$prems1scan};
-	#print Dumper $ms1scan_mz_list;
-	my $len = $#$ms1scan_mz_list;
+	my $len = $#$ms1scan_mz_list; #print Dumper $len;
 	my $obs_mono_mz;
 	my $obs_mono_int;
-	my $measured_ppm_mono;
-	my $measured_SN_mono;
 	my $tag_iso;
+	my $measured_ppm_mono;
 	my $measured_pre_SN;
 	my $isotopic_highest_peak;
-	
 	my $iso_require = 10;
 	
 	my $index = 0;
@@ -1198,7 +1268,6 @@ sub iso_peak_check{
 	}
 	
 	
-	my $index = 0;
 	while($index <= $len){
 		my $curr_mz = $ms1scan_mz_list->[$index]->[0];
 		my $curr_int = $ms1scan_mz_list->[$index]->[1];
@@ -1209,94 +1278,86 @@ sub iso_peak_check{
 			$index++;
 			next;
 		}else{
-			
 			my $measured_ppm = ppm($curr_mz,$cal_premz);
 			$measured_pre_SN = $curr_int / (1 + $lowest_sig);
+			# if($measured_pre_SN < 3){
+				# $index++;
+				# next;
+			# }
 			my @obs_iso_distribution;
-			my @obs_mz;
 			my @obs_ppm;
-			if(abs($measured_ppm) <= $ms1_ppm_tolerence){
-				#print $measured_ppm,"\n";
+			my @obs_mz;
+			if(abs($measured_ppm) <= $ms1_ppm_tolerence ){
 				$measured_ppm_mono = $measured_ppm;
 				$obs_mono_mz = $curr_mz;
 				$obs_mono_int = $curr_int;
-				$measured_SN_mono = $obs_mono_int / $lowest_sig;
 				push @obs_iso_distribution,$obs_mono_int;
-				push @obs_mz,$obs_mono_mz;
 				push @obs_ppm,$measured_ppm;
+				push @obs_mz,$obs_mono_mz;
 				$tag_iso = $tag_iso <= 1 ? 1 : $tag_iso;
-				
-				# check multiple isotopic peaks
+				$isotopic_highest_peak = $obs_mono_int;
 				if($iso_require == 1){
 					$index = $len+1;
 				}else{
+
 					my $index_ = $index;
 					my @predict_ios_peaks;
+					my $upper_mz;
 					for(1..$iso_require-1){
-						push @predict_ios_peaks, ($obs_mono_mz + $_ * $massdiff_C12_C13 / $assumed_charge);
-					}				
+						$upper_mz = ($curr_mz + $_ * $massdiff_C12_C13 / $assumed_charge);
+						push @predict_ios_peaks, $upper_mz;
+					}
 					my $n_of_ios_matched;
-					my %tmp_checked_obs_mz;
-					my $ms2_iso_tolence;
+					my %tmp_trace_mz;
 					my $index_predict_ion_peaks = 0;
+					my $isotopic_ints;
+					my $control = 0;
+					my $last_int;
+					my $second_last_int;
+					
+					
+					my $n_of_ios_matched_high;
+					my $index_predict_ion_peaks_high = 0;
+					my $isotopic_ints_high;
+					my %tmp_trace_mz_high;
+
 					while($index_++ < $len){
 						my $curr_mz_ = $ms1scan_mz_list->[$index_]->[0];
 						my $curr_int_ = $ms1scan_mz_list->[$index_]->[1];
+						
 						last if $curr_mz_ > $predict_ios_peaks[$#predict_ios_peaks] + 0.1;
-						#foreach my $pred_iso (@predict_ios_peaks){
-							#if(abs($pred_iso - $curr_mz) <= $iso_low_precison){
-							my $pred_iso = $predict_ios_peaks[$index_predict_ion_peaks];
-							my $measured_ppm_iso = ppm($curr_mz_,$pred_iso);
-							
-							#print join "\t","\n---",$curr_mz_,$pred_iso,$measured_ppm_iso,$index_predict_ion_peaks,"\n";
-							
-							if(abs( $measured_ppm_iso ) <= $ms1_ppm_tolerence){
-								$n_of_ios_matched++;
-								$index_predict_ion_peaks++;
-								push @obs_iso_distribution,$curr_int_;
-								push @obs_mz,$curr_mz_;
-								push @obs_ppm,$measured_ppm_iso;
+						my $pred_iso = $predict_ios_peaks[$index_predict_ion_peaks];
+						my $measured_ppm_iso = ppm($curr_mz_,$pred_iso);
+						if(abs( $measured_ppm_iso ) <= $ms1_ppm_tolerence ){
+							if($second_last_int > $last_int && $last_int < $curr_int_){
+								$index_--;
+								last;
 							}
-							last if $index_predict_ion_peaks == $iso_require-1;
-						#}
+							push @obs_ppm,$measured_ppm_iso;
+							push @obs_mz,$curr_mz_;
+							$n_of_ios_matched++;
+							$index_predict_ion_peaks++;
+							push @obs_iso_distribution,$curr_int_;
+							$tmp_trace_mz{$curr_mz_} = 1;
+							$second_last_int = $last_int;
+							$last_int = $curr_int_;
+						}
+
+						last if $index_predict_ion_peaks == $iso_require-1;
 					}
-					
-					# if($n_of_ios_matched >= 1){
-						# #print STDERR "\n";
-						# #print STDERR Dumper @obs_iso_distribution,@obs_mz,@obs_ppm;
-						
-						# my @theoretical_iso_distribution;
-						
-						# if(! exists $iso_distribution_buffer{$peptide}){
-							# @theoretical_iso_distribution = @{IsotopeDistribution::CAPTT($peptide)};
-							# $iso_distribution_buffer{$peptide} = [@theoretical_iso_distribution];
-						# }else{
-							# @theoretical_iso_distribution = @{$iso_distribution_buffer{$peptide}};
-						# }
-						
-						# # for(reverse(2..$#obs_iso_distribution)){
-							# $corr_distribution= pearson_corr([@obs_iso_distribution[0..$#obs_iso_distribution]],[@theoretical_iso_distribution[0..$#obs_iso_distribution]]);
-							# # #print "---$corr_distribution##$_ \n";
-							# # if($corr_distribution < $corr_){
-								# # $corr_distribution = $corr_;
-							# # }
-						# # }
-						# # if($corr_distribution < 0.3 && $assumed_charge == 2){
-							# # $corr_distribution = pearson_corr([@obs_iso_distribution[0..1]],[@theoretical_iso_distribution[0..1]]);
-						# # }
-						# print STDERR join "\t","checkisotope",$prems1scan,$cal_premz,$obs_mono_int,$lowest_sig,$measured_SN_mono,$assumed_charge,$ms2scan,$peptide,$corr_distribution,@theoretical_iso_distribution[0..$#obs_iso_distribution],"\n";
-					# }
-					
+							
 					$n_of_ios_matched = $n_of_ios_matched > $iso_require ? $iso_require : $n_of_ios_matched; # in case two more peak within 0.01Da, use '>=', rather '=='
 					$tag_iso = $tag_iso < $n_of_ios_matched +1 ? $n_of_ios_matched + 1 : $tag_iso;
+					
 				}
 			}
 			$index++;
 		}
 	}
-	#print join "@@",($tag_iso, $obs_mono_mz, $obs_mono_int),"\n";
-	return ($tag_iso, $obs_mono_mz, $obs_mono_int,$measured_ppm_mono, $measured_pre_SN);
+	
+	return ($tag_iso, $obs_mono_mz, $obs_mono_int,$measured_ppm_mono,$measured_pre_SN) ;
 }
+
 
 sub MS1_profile{
 	my ($curr_ms1scan,$curr_ms2scan) = (@_);
@@ -1480,7 +1541,7 @@ sub readMS1{
 		if(/^\d+/){
 			my @line = split / /,$_;
 			if ($line[0] >= $mz_start && $line[0] <= $mz_end){
-				push @ms1_peaks_,[@line[0,1]];
+				push @ms1_peaks_,[@line[0,1]] if $line[1] > $ms1_min_intensity;
 				#push @ms1_low_sig,[@line[0,1]] if $line[1] < 10;
 				if($lowest_sig > $line[1]){
 					$lowest_sig = $line[1];
@@ -1640,7 +1701,7 @@ sub find_mod(){
 	
 	my ($mod_Iso_tag,$mod_exp_premz,$mod_exp_int,$mod_ppm_obs,$massdiff,$mod_pos,$position,$NL,$mod_name,$unimod_mass);
 	my ($PTMSiteScore,$PTMSiteProb);
-	print STDERR join "\t","\ntest:","prems1scan:$prems1scan,cal_premz:$cal_premz,assumed_charge:$assumed_charge,ms2scan:$ms2scan,pep:$pep,pepLen:$pepLen,strip_pep:$strip_pep","\n"; #exit;
+	#print STDERR join "\t","\ntest:","prems1scan:$prems1scan,cal_premz:$cal_premz,assumed_charge:$assumed_charge,ms2scan:$ms2scan,pep:$pep,pepLen:$pepLen,strip_pep:$strip_pep","\n"; #exit;
 	
 	my ($ms1scan_mz_list,$lowest_sig,$highest_sig);
 	if(exists $ms1scan_clean_data{$prems1scan}{$ms2scan}){
@@ -1668,7 +1729,7 @@ sub find_mod(){
 		next;
 	}
 	
-	print STDERR "MS1 start:$ms1_start_mz  MS1 end:$ms1_end_mz \n";
+	# print STDERR "MS1 start:$ms1_start_mz  MS1 end:$ms1_end_mz \n";
 	
 	#my @mod_mass_list = sort{$a <=> $b}grep {($cal_premz + $_/$assumed_charge) > $ms1_start_mz && ($cal_premz + $_/$assumed_charge) < $ms1_end_mz} (keys %unimods);
 	#$peaks = readMS2(sprintf("%06.f",$ms2scan)) if ! defined $peaks;
@@ -1682,7 +1743,7 @@ sub find_mod(){
 	my ($matched_mzs_type,$matched_int_without_mod,$matched_int_sd,$m,$match_mzs_topN5) = ms2spectra_match($theoretical_mz_table,$peaks);
 	my ($match_tag,$match_coverage_without_mod) = tag($matched_mzs_type);
 	#my  = tag($matched_mzs_type);
-	print STDERR Dumper  $matched_mzs_type,$matched_int_without_mod,$matched_int_sd,$m,$match_mzs_topN5,$match_tag,$match_coverage_without_mod;
+	#print STDERR Dumper  $matched_mzs_type,$matched_int_without_mod,$matched_int_sd,$m,$match_mzs_topN5,$match_tag,$match_coverage_without_mod;
 	
 	
 	# my $pep_ = $pep;
@@ -1727,7 +1788,8 @@ sub find_mod(){
 	my $matched_isotops_int;
 	my $corr_mod;
 	my $median_corr_keep;
-	my ($matched_int_sd_mod,$ppm_ave_mod,$matched_int_reported,$match_type_report);
+	#my ($matched_int_sd_mod,$ppm_ave_mod,$matched_int_reported,$match_type_report);
+	my ($matched_int_sd_mod,$ppm_ave_mod,$ppm_sd_mod,$matched_int_reported,$match_type_report);
 	my %last_candidate_trace_mz;
 	my $pre_SN;
 	
@@ -1737,29 +1799,29 @@ sub find_mod(){
 		my $curr_mz = $ms1scan_mz_list->[$index]->[0];
 		my $curr_int = $ms1scan_mz_list->[$index]->[1];
 		$pre_SN = $curr_int / (1 + $lowest_sig );
-		print STDERR "$curr_int / (1 + $lowest_sig );\n";
-		print STDERR "--check1 mz: $curr_mz pre_SN:$pre_SN\n";
-		print STDERR join "##", exists $trace_mz{$curr_mz}, exists $last_candidate_trace_mz{$curr_mz},$pre_SN, "\n";
-		if (exists $trace_mz{$curr_mz} || exists $last_candidate_trace_mz{$curr_mz} || $pre_SN < 10 ){
+		# print STDERR "$curr_int / (1 + $lowest_sig );\n";
+		# print STDERR "--check1 mz: $curr_mz pre_SN:$pre_SN\n";
+		# print STDERR join "##", exists $trace_mz{$curr_mz}, exists $last_candidate_trace_mz{$curr_mz},$pre_SN, "\n";
+		if (exists $trace_mz{$curr_mz} || exists $last_candidate_trace_mz{$curr_mz} || $pre_SN < 5 ){
 			$index++;
 			next;
 		}
 		
-		print STDERR "--check2 mz: $curr_mz\n";
-		print STDERR Dumper "MS1Profile: ",$ms1profile->{$curr_mz};
+		#print STDERR "--check2 mz: $curr_mz\n";
+		#print STDERR Dumper "MS1Profile: ",$ms1profile->{$curr_mz};
 		if (! defined $ms1profile->{$curr_mz} || ($ms1profile->{$curr_mz}->[1] == 0 && $ms1profile->{$curr_mz}->[3] == 0) ){
 			$index++;
 			next ;
 		}
 		
 		my $mod_mass = ($curr_mz - $cal_premz) * $assumed_charge;
-		print STDERR "unimod_site_test\n";
-		print STDERR join ":",($mod_mass,$strip_pep,$ms1_ppm_tolerence,$peptide_prev_aa,$peptide_next_aa),"\n";
+		#print STDERR "unimod_site_test\n";
+		#print STDERR join ":",($mod_mass,$strip_pep,$ms1_ppm_tolerence,$peptide_prev_aa,$peptide_next_aa),"\n";
 		
 		my $site = unimod_site_test($mod_mass,$assumed_charge,$cal_premz,$strip_pep,$ms1_ppm_tolerence,$peptide_prev_aa,$peptide_next_aa);
 		
-		print STDERR "--unimod_site_test: $curr_mz\n";
-		print STDERR Dumper $site;
+		#print STDERR "--unimod_site_test: $curr_mz\n";
+		#print STDERR Dumper $site;
 		if( ! defined $site){
 			$index++;
 			# foreach my $i (keys %tmp_trace_mz_high){
@@ -1880,9 +1942,9 @@ sub find_mod(){
 			last if $index_predict_ion_peaks == $iso_require;
 				
 		}
-		print STDERR "----\t check mz:$curr_mz: mod_mass: $mod_mass n_of_ios_matched_high:$n_of_ios_matched_high\tn_of_ios_matched:$n_of_ios_matched\n";
-		print STDERR Dumper \%tmp_trace_mz,\%tmp_trace_mz_high;
-		print STDERR "--check4 mz: $curr_mz\n";
+		# print STDERR "----\t check mz:$curr_mz: mod_mass: $mod_mass n_of_ios_matched_high:$n_of_ios_matched_high\tn_of_ios_matched:$n_of_ios_matched\n";
+		# print STDERR Dumper \%tmp_trace_mz,\%tmp_trace_mz_high;
+		# print STDERR "--check4 mz: $curr_mz\n";
 		if($n_of_ios_matched < 3){
 			$index++;
 			next;
@@ -1895,8 +1957,8 @@ sub find_mod(){
 				$overlap++;
 			}
 		}
-		print STDERR Dumper \%tmp_trace_mz,\%tmp_trace_mz_high;
-		print STDERR "--check5 mz: $curr_mz\n";
+		# print STDERR Dumper \%tmp_trace_mz,\%tmp_trace_mz_high;
+		# print STDERR "--check5 mz: $curr_mz\n";
 		if(  $n_of_ios_matched >= 3 && $overlap == $n_of_ios_matched && $n_of_ios_matched < $n_of_ios_matched_high && $isotopic_ints_high > $isotopic_ints){
 			$index++;
 			foreach my $i (keys %tmp_trace_mz_high){
@@ -1908,8 +1970,8 @@ sub find_mod(){
 		my $ind_corr_arr = $#obs_iso_distribution > 4 ? 4 : $#obs_iso_distribution;
 		my $corr = pearson_corr([@theoretical_iso_distribution[0..$ind_corr_arr]],[@obs_iso_distribution[0..$ind_corr_arr]]);
 		
-		print STDERR Dumper (@obs_mz,[@theoretical_iso_distribution[0..$ind_corr_arr]],[@obs_iso_distribution[0..$ind_corr_arr]]);
-		print STDERR "corr check : $corr\n";
+		# print STDERR Dumper (@obs_mz,[@theoretical_iso_distribution[0..$ind_corr_arr]],[@obs_iso_distribution[0..$ind_corr_arr]]);
+		# print STDERR "corr check : $corr\n";
 		if($corr < 0.8){
 			$index++;
 			next;
@@ -1930,7 +1992,7 @@ sub find_mod(){
 		#print Dumper \%sites_candidate;
 		
 		my ($matched_mzs_type,$matched_int,$matched_ppms,$match_mzs_topN5);
-		my ($match_type,$matched_int_with_mod_, $matched_int_sd_mod_,$ppm_ave_mod_,$matched_int_reported_,$matched_coverage_,$match_mzs_topN5,$matched_mod_type_,$mod_matched_coverage_);
+		my ($match_type,$matched_int_with_mod_, $matched_int_sd_mod_,$ppm_ave_mod_,$ppm_sd_mod_,$matched_int_reported_,$matched_coverage_,$match_mzs_topN5,$matched_mod_type_,$mod_matched_coverage_);
 		#my $theoretical_mz_table_mod;
 		#my ($mod_matched_res);
 		
@@ -1938,10 +2000,10 @@ sub find_mod(){
 		
 		
 		if(! defined $PTMsiteScore_modification_Res){
-			print STDERR "no PTMSiteScore\n";
+			# print STDERR "no PTMSiteScore\n";
 			foreach my $i (keys %tmp_trace_mz){
 				$trace_mz{$i} = 1;
-				print STDERR $curr_mz,"-", $i,"\n";
+				# print STDERR $curr_mz,"-", $i,"\n";
 			}
 			$index++;
 			next;
@@ -1964,22 +2026,22 @@ sub find_mod(){
 		#print Dumper ($theoretical_mz_table_mod,$peaks,$ms1profile->{$iso_top_mz},$ms2profile);
 		($matched_mzs_type,$matched_int,$matched_ppms,$match_mzs_topN5) = ms2spectra_match_mod($theoretical_mz_table_mod,$peaks,$ms1profile->{$iso_top_mz},$ms2profile);
 		#print Dumper ($matched_mzs_type,$matched_int,$matched_ppms,$match_mzs_topN5);
-		print STDERR "--check4.2 mz: $curr_mz\n";
+		# print STDERR "--check4.2 mz: $curr_mz\n";
 		if(! defined $matched_mzs_type ){
 			foreach my $i (keys %tmp_trace_mz){
 				$trace_mz{$i} = 1;
-				print STDERR $curr_mz,"-", $i,"\n";
+				# print STDERR $curr_mz,"-", $i,"\n";
 			}
 			$index++;
 			next;
 		}
-		($match_type,$matched_int_with_mod_, $matched_int_sd_mod_,$ppm_ave_mod_,$matched_int_reported_,$matched_coverage_,$match_mzs_topN5,$matched_mod_type_,$mod_matched_coverage_)= tag_mod($matched_mzs_type,$matched_int,$matched_ppms);
+		($match_type,$matched_int_with_mod_, $matched_int_sd_mod_,$ppm_ave_mod_,$matched_int_reported_,$matched_coverage_,$match_mzs_topN5,$matched_mod_type_,$mod_matched_coverage_,$ppm_sd_mod_)= tag_mod($matched_mzs_type,$matched_int,$matched_ppms);
 		#print Dumper ($match_type,$matched_int_with_mod_, $matched_int_sd_mod_,$ppm_ave_mod_,$matched_int_reported_,$matched_coverage_,$match_mzs_topN5,$matched_mod_type_,$mod_matched_coverage_);
 		#print STDERR Dumper $matched_mzs_type,$matched_int,$matched_ppms,$match_mzs_topN5,$site_;
-		print STDERR "--check5 mz: $curr_mz\n";
+		# print STDERR "--check5 mz: $curr_mz\n";
 		#print Dumper  $match_type,$matched_int_mod; 
 		my ($y,$b) =  ($match_type->{"Y"}, $match_type->{"B"}); 
-		print STDERR Dumper "match_mzs_topN5",$match_mzs_topN5;
+		# print STDERR Dumper "match_mzs_topN5",$match_mzs_topN5;
 		#print STDERR Dumper $theoretical_mz_table_mod,$matched_mzs_type;
 		# map{print STDERR Dumper  $_, normalization_int($ms2profile->{$_}) }@{$match_mzs_topN5};
 		# print STDERR Dumper normalization_int($ms1profile->{$curr_mz});
@@ -1995,18 +2057,18 @@ sub find_mod(){
 			if ($n_non_zero <= 2 || !( $ms2profile->{$ion_mz}->[1] && $ms2profile->{$ion_mz}->[2] && $ms2profile->{$ion_mz}->[3])){
 				next;
 			}
-			print STDERR Dumper (normalization_int($ms2profile->{$ion_mz}),normalization_int($ms1profile->{$iso_top_mz}),$s,$e);
+			# print STDERR Dumper (normalization_int($ms2profile->{$ion_mz}),normalization_int($ms1profile->{$iso_top_mz}),$s,$e);
 			push @corrlist, pearson_corr([@{$ms2profile->{$ion_mz}}[$s..$e]],[@{$ms1profile->{$iso_top_mz}}[$s..$e]]);
 
 		}
 		#$ave_corr = ave([@corrlist]);
 		$median_corr = median([@corrlist]);
-		print STDERR "median_corr: $median_corr; median_corr_keep: $median_corr_keep  @corrlist\n";
-		print STDERR "--check7 mz: $curr_mz\n";
+		# print STDERR "median_corr: $median_corr; median_corr_keep: $median_corr_keep  @corrlist\n";
+		# print STDERR "--check7 mz: $curr_mz\n";
 		if($median_corr < 0.95  || scalar @corrlist < 4 ){
 			foreach my $i (keys %tmp_trace_mz){
 				$trace_mz{$i} = 1;
-				print STDERR $curr_mz,"-", $i,"\n";
+				# print STDERR $curr_mz,"-", $i,"\n";
 			}
 			$index++;
 			next;
@@ -2024,13 +2086,13 @@ sub find_mod(){
 							# $y  > $len_of_matched_y_with_mod [$len_of_matched_y_without_mod]  
 							# $b  > $len_of_matched_b_with_mod [$len_of_matched_b_without_mod]   \n";
 	
-		print STDERR "$PTMSiteScore_ > $PTMSiteScore   
-			$matched_coverage_ >= $match_coverage_without_mod + 2  
-			$y >= $len_of_matched_y_without_mod + 2 
-			$b >= $len_of_matched_b_without_mod + 2
-			($median_corr > $median_corr_keep && $isotopic_ints > $matched_isotops_int)
-			";
-		print STDERR "--check8 mz: $curr_mz\n";
+		# print STDERR "$PTMSiteScore_ > $PTMSiteScore   
+			# $matched_coverage_ >= $match_coverage_without_mod + 2  
+			# $y >= $len_of_matched_y_without_mod + 2 
+			# $b >= $len_of_matched_b_without_mod + 2
+			# ($median_corr > $median_corr_keep && $isotopic_ints > $matched_isotops_int)
+			# ";
+		# print STDERR "--check8 mz: $curr_mz\n";
 		%last_candidate_trace_mz = %tmp_trace_mz;
 		if(
 			$PTMSiteScore_ > $PTMSiteScore && 
@@ -2049,13 +2111,12 @@ sub find_mod(){
 			$matched_mod_type = $matched_mod_type_;
 			$matched_mod_type_num = $#$matched_mod_type + 1;
 			$median_corr_keep = $median_corr;
-			($matched_int_sd_mod,$ppm_ave_mod,$matched_int_reported,$match_type_report) = ($matched_int_sd_mod_,$ppm_ave_mod_,$matched_int_reported_,$match_type);
-			
-			print STDERR "keep: $curr_mz iso_top_mz: $iso_top_mz   $y,$b,$matched_int_with_mod_ $mod_mass $mod_name  $len_of_matched_y_with_mod, $len_of_matched_b_with_mod, $matched_int_with_mod\n";
+			($matched_int_sd_mod,$ppm_ave_mod,$matched_int_reported,$match_type_report,$ppm_sd_mod) = ($matched_int_sd_mod_,$ppm_ave_mod_,$matched_int_reported_,$match_type,$ppm_sd_mod_);
+			# print STDERR "keep: $curr_mz iso_top_mz: $iso_top_mz   $y,$b,$matched_int_with_mod_ $mod_mass $mod_name  $len_of_matched_y_with_mod, $len_of_matched_b_with_mod, $matched_int_with_mod\n";
 			
 			foreach my $i (keys %tmp_trace_mz){
 				$trace_mz{$i} = 1;
-				print STDERR $curr_mz,"-", $i,"\n";
+				# print STDERR $curr_mz,"-", $i,"\n";
 			}
 			
 			
@@ -2076,7 +2137,7 @@ sub find_mod(){
 		}else{
 			foreach my $i (keys %tmp_trace_mz){
 				$trace_mz{$i} = 1;
-				print STDERR $curr_mz,"-", $i,"\n";
+				# print STDERR $curr_mz,"-", $i,"\n";
 			}
 		}
 		$index++;
@@ -2110,13 +2171,13 @@ sub find_mod(){
 				}
 			}
 		}
-		print STDERR join "\t","@@@",$prems1scan,$cal_premz,$assumed_charge,$ms2scan,$pep,$pepLen,$strip_pep,$mod_Iso_tag,$mod_exp_premz,$mod_exp_int,$mod_ppm_obs,$massdiff,$mod_pos,$position,$mod_name,$unimod_mass,$mod_peptide,$PTMSiteScore,$PTMSiteProb,"\n";
+		# print STDERR join "\t","@@@",$prems1scan,$cal_premz,$assumed_charge,$ms2scan,$pep,$pepLen,$strip_pep,$mod_Iso_tag,$mod_exp_premz,$mod_exp_int,$mod_ppm_obs,$massdiff,$mod_pos,$position,$mod_name,$unimod_mass,$mod_peptide,$PTMSiteScore,$PTMSiteProb,"\n";
 		
 		my $new_calmz = peptide::calmz($mod_peptide,$assumed_charge);
 		#exit;print Dumper ($mod_Iso_tag,$mod_exp_premz,$mod_exp_int,$mod_ppm_obs,$massdiff,$match_type_report->{'Y'},$match_type_report->{'B'},$matched_int_sd_mod,$ppm_ave_mod,$matched_int_reported,$match_coverage_with_mod,$matched_mod_type,$matched_int_with_mod);
-		return ($mod_Iso_tag,$mod_exp_premz,$mod_exp_int,$mod_ppm_obs,$massdiff,$match_type_report->{'Y'},$match_type_report->{'B'},$matched_int_sd_mod,$ppm_ave_mod,$matched_int_reported,$match_coverage_with_mod,$matched_mod_type,$matched_int_with_mod,$pre_SN,$position,$mod_name,$unimod_mass,$mod_peptide,$PTMSiteScore,$PTMSiteProb,$new_calmz);	
+		return ($mod_Iso_tag,$mod_exp_premz,$mod_exp_int,$mod_ppm_obs,$massdiff,$match_type_report->{'Y'},$match_type_report->{'B'},$matched_int_sd_mod,$ppm_ave_mod,$matched_int_reported,$match_coverage_with_mod,$matched_mod_type,$matched_int_with_mod,$pre_SN,$position,$mod_name,$unimod_mass,$mod_peptide,$PTMSiteScore,$PTMSiteProb,$new_calmz,$ppm_sd_mod);	
 	}else{
-		print STDERR "\n---FAILED\n";
+		# print STDERR "\n---FAILED\n";
 		#if($cal_premz > $ms1_start_mz && $cal_premz < $ms1_end_mz){
 		return (0,$cal_premz);
 		#}
@@ -2201,7 +2262,7 @@ sub unimod_site_test{
 			last;
 		}else{#print "6\n";
 			my $ppm_ = ppm($cal_premz+$unimod_mono_mass/$assumed_charge,$cal_premz+$mass/$assumed_charge);
-			print STDERR join "\t","unimod_site_test:",$unimod_mono_mass,$mass,$ppm_,"\n";
+			# print STDERR join "\t","unimod_site_test:",$unimod_mono_mass,$mass,$ppm_,"\n";
 			
 			#print STDERR Dumper \%fixed_variable;
 			my $tag;
@@ -2443,6 +2504,7 @@ sub ms2spectra_match_mod{
 
 sub ms2spectra_match{
 	my ($pred,$obs) = (@_); # predicted, observed mz
+	#print Dumper ($pred,$obs);
 	#my $ms2_tolence = $ppm_tolerence;
 	my @pred_list = sort{$a <=> $b}(keys %{$pred});
 	my %uniq;
@@ -2502,16 +2564,23 @@ sub ms2spectra_match{
 		}
 	}
 	#return ($matched_mzs,$matched_mzs_type,$not_matched_tic);
-	my $ppm_ave = ave(\@ppms_frag);
+	my $ppm_md; 
+	my $ppm_sd;
+	
+	
 	my $m_int_ave;
 	my $m_int_sd;
 	if(scalar @matched_ints > 1){
 		$m_int_ave = ave(\@matched_ints);
 		$m_int_sd = stdev(\@matched_ints,$m_int_ave);
+		$ppm_md = median(\@ppms_frag);
+		my $ppm_ave = ave(\@ppms_frag);
+		$ppm_sd = stdev(\@ppms_frag,$ppm_ave);
 	}
 	#my $ppm_sd; 
 	#$ppm_sd = stdev(\@ppms_frag,$ppm_ave) if $#ppms_frag >= 1;
-	return ($matched_mzs_type,$matched_int,$m_int_sd || "NA",$ppm_ave,$matched_mzs);
+	#print Dumper ($matched_mzs_type,$matched_int,$m_int_sd || "NA",$ppm_md,$matched_mzs,$ppm_sd);
+	return ($matched_mzs_type,$matched_int,$m_int_sd || "NA",$ppm_md,$ppm_sd);
 }
 
 
@@ -2705,7 +2774,11 @@ sub tag_mod{
 	#print Dumper $type, \@tags;
 	my $coverage_n = $max_len;
 	
-	my $ppm_ave = ave(\@ppms);
+	my $ppm_md = median(\@ppms);
+	my $ppm_sd;
+	if(scalar @ppms){
+		$ppm_sd = stdev(\@ppms, ave(\@ppms));
+	}
 	my $m_int_ave;
 	my $m_int_sd;
 	if(scalar @ints > 1){
@@ -2713,16 +2786,17 @@ sub tag_mod{
 		$m_int_sd = stdev(\@ints,$m_int_ave);
 	}
 	
+	
 	#print Dumper \@matched_mods;exit;
 	
 	my @sorted = map{$_->[0]}sort{$b->[1] <=> $a->[1]}@matched_mods;
 	$match_mods_topN5 = [@sorted[0..4]];
-	print STDERR "match_mods_type: ",join "\t",@{$matched_mod_type},"\n" if defined $matched_mod_type;
-	print STDERR "match_topN5_type: ",join "\t",(map{if($_){$_->[2]}}(sort{$b->[1] <=> $a->[1]}@matched_mods)[0..4]),"\n" if scalar @matched_mods;
-	print STDERR "mod_coverage_n: $mod_coverage_n\n";
+	# print STDERR "match_mods_type: ",join "\t",@{$matched_mod_type},"\n" if defined $matched_mod_type;
+	# print STDERR "match_topN5_type: ",join "\t",(map{if($_){$_->[2]}}(sort{$b->[1] <=> $a->[1]}@matched_mods)[0..4]),"\n" if scalar @matched_mods;
+	# print STDERR "mod_coverage_n: $mod_coverage_n\n";
 	#my $coverage_n = $tag_len{'Y'} + $tag_len{'B'};
 	#$match_type,$matched_int_with_mod_, $matched_int_sd_mod_,$ppm_ave_mod_,$matched_int_reported_
-	return (\%tag_len,$matched_ints_mod,$m_int_sd || "NA",$ppm_ave,$matched_ints_mod_reported,$coverage_n,$match_mods_topN5,$matched_mod_type,$mod_coverage_n);
+	return (\%tag_len,$matched_ints_mod,$m_int_sd || "NA",$ppm_md,$matched_ints_mod_reported,$coverage_n,$match_mods_topN5,$matched_mod_type,$mod_coverage_n,$ppm_sd);
 }
 
 
@@ -3108,7 +3182,7 @@ sub PhosphoSiteScore{
 		
 		foreach my $c(@CombSitePos){
 			my $pos = join "#",@{$c};
-			print STDERR Dumper "pos",$pos;
+			#print STDERR Dumper "pos",$pos;
 			foreach my $site (@{$c}){
 				$PTMSiteScore_res{$site} += 1 / (10 ** (-$score->{$peakdepth_of_max_score}->{$pos}/10)) if $score->{$peakdepth_of_max_score}->{$pos} > 0;
 				print STDERR "$score->{$peakdepth_of_max_score}->{$pos} > 0;\n"
@@ -3168,7 +3242,7 @@ sub max_diff_score{
 	my %depth_pos;
 	my %max_score_depth;
 	my $max_score;
-	print STDERR Dumper $score_;
+	#print STDERR Dumper $score_;
 	foreach my $depth(keys %{$score_}){
 		my @sorted_pos = (sort{$score_->{$depth}->{$b} <=> $score_->{$depth}->{$a}}keys %{$score_->{$depth}});
 		push @{$max_score_depth{$score_->{$depth}->{$sorted_pos[0]}}},$depth;
@@ -3196,7 +3270,7 @@ sub max_diff_score{
 		$score_diff{$depth} = $diff;
 		push @{$diff_depth{$diff}},$depth;
 	}
-	print STDERR Dumper \%score_diff,\%diff_depth,\%depth_pos;
+	#print STDERR Dumper \%score_diff,\%diff_depth,\%depth_pos;
 	my $max_diff = max(map{$score_diff{$_}}@{$max_score_depth{$max_score}});
 	if(defined $diff_depth{$max_diff}){
 		if(scalar @{$diff_depth{$max_diff}} < 10 ){
@@ -3312,7 +3386,7 @@ $Site = [
 			my $new_mod_mass = $mod_aa{$mod_AA} - $mono_aa{$mod_AA} + $unimod_mass;
 			#print STDERR "re_loc", "$mod_aa{$mod_AA} - $mono_aa{$mod_AA} + $unimod_mass", "\t",$new_mod_mass,"\n";
 			my $new_site = unimod_site_test($new_mod_mass,$charge,$cal_premz,$strip_pep,$ms1_ppm_tolerence,$peptide_prev_aa,$peptide_next_aa);
-			print STDERR Dumper $new_site;
+			#print STDERR Dumper $new_site;
 			# if($new_site->[0]->[3] eq "not-modificated"){
 				# my $new_uniq_key = join ":",$pos,0,undef,$mod_AA,"re_loc";
 				# #push @{$CombSitePos->{$uniq_key}}, [$pos,$unimod_mass,$NL,$unimod_name,$mod_AA];
@@ -3340,7 +3414,7 @@ $Site = [
 		my $aa = $i->[2];
 		$modfied_sites{$pos} = $aa;
 	}
-	print STDERR Dumper $Site_uniq;
+	#print STDERR Dumper $Site_uniq;
 	#my @CombSitePos = [@SitePos]; # current version only support single mod
 	foreach my $key (keys %{$Site_uniq}){
 		my ($pos,$unimod_mass,$NL,$mod_AA,$loc) = split /:/,$key;
@@ -3366,7 +3440,7 @@ $Site = [
 			# if($pos_cnt > 1 && ($site_position eq "N-" or $site_position eq "C-")){
 				# next;
 			# }
-			print STDERR join "\t",($site_position,$unimod_mono_mass,$NL,$mod_name_,$aa) ,"\n";
+			#print STDERR join "\t",($site_position,$unimod_mono_mass,$NL,$mod_name_,$aa) ,"\n";
 			my $new_peptide_mod;
 			if($loc eq "re_loc"){
 				
@@ -3385,7 +3459,7 @@ $Site = [
 						$new_peptide_mod .= $&;
 					}
 				}
-				print STDERR Dumper $peptide_mod,$new_peptide_mod;
+				#print STDERR Dumper $peptide_mod,$new_peptide_mod;
 				#$peptide_mod = $new_peptide_mod;
 			}else{
 				$new_peptide_mod = $peptide_mod;
@@ -3397,7 +3471,7 @@ $Site = [
 			# print STDERR Dumper $matched_frags;
 			($score,$score_for_peakdepth) = PeakdepthOptimizationScore($matched_frags,$deisotope_peaks->[$#$deisotope_peaks]->[0],$therotical_peak_n,$site_position,$score,$extracted_ions_n,$score_for_peakdepth);
 		}
-		print STDERR Dumper "score",$score;
+		#print STDERR Dumper "score",$score;
 		if(! defined $score){
 			$ptmscore_res = undef;
 		}else{
@@ -3442,9 +3516,9 @@ $Site = [
 			my $PTMSiteScore;
 			my $new_calmz;
 			if($sumScore){
-				print STDERR $peptide_mod,":\t unimod_mass: $unimod_mass\t","peakdepth_of_max_score: ", $peakdepth_of_max_score, "\t", $score->{$peakdepth_of_max_score}->{$modification_sitepos},"\t";
-				print STDERR join ";",map{sprintf "%d(%.2f%%)",$_->[0],100*$PTMSiteScore_res{$_->[0]}/$sumScore}@{$CombSitePos->{$unimod_mass}};
-				print STDERR "\n";
+				# print STDERR $peptide_mod,":\t unimod_mass: $unimod_mass\t","peakdepth_of_max_score: ", $peakdepth_of_max_score, "\t", $score->{$peakdepth_of_max_score}->{$modification_sitepos},"\t";
+				# print STDERR join ";",map{sprintf "%d(%.2f%%)",$_->[0],100*$PTMSiteScore_res{$_->[0]}/$sumScore}@{$CombSitePos->{$unimod_mass}};
+				# print STDERR "\n";
 				my $ind;
 				
 				#my @res_modificaiton_sites = split /#/,$modification_sitepos;
