@@ -3,7 +3,7 @@
 DIA-MS2pep is a spectrum-centric tool of Data-Independent Acquisiton (DIA) data analysis, and can identify directly from DIA data without a pre-built spectral library. DIA-MS2pep can also identify the peptides with a putative modification. 
 DIA-MS2pep is an open source tool, compatible to Linux system users. For Windows system users, the setup of a Unix environment (Cygwin) is required (The installation process is automated and not complicated). 
 DIA-MS2pep require Perl programming language (versions 5.26), including the Perl modules including *Math*, *MIME*, *Statistics* and *Parallel::ForkManager*. 
-
+![Alt text](/Scripts/Image/Fig_1.png?raw=true "Title")
 ## External tools:
 1.       Msconvert (ProteoWizard, Version 3.0.9974)
 
@@ -13,8 +13,8 @@ DIA-MS2pep require Perl programming language (versions 5.26), including the Perl
 
 ## DIA-MS2pep software
 DIA-MS2pep comprises of four main components: 
-![Alt text](/Scripts/Image/Fig_1.png?raw=true "Title")
 
+![Alt text](/Scripts/Image/flow.png?raw=true "Title")
 1.        *DIA/SWATH_pesudo_MS2*: generation of pseudo-spectra from DIA data, where we provide two scripts for Obitrap and TripleTOF data, respectively. 
         
 2.        *MSFragger_runner*: implementation of MSFragger to perform large precursor mass database search.
@@ -23,7 +23,7 @@ DIA-MS2pep comprises of four main components:
        
 4.        *Percolator_runner*: implementation of Percolator to validate the peptide hits at PSM, peptide and protein level. 
 
-![Alt text](/Scripts/Image/flow.png?raw=true "Title")
+
 
 ## Two options to run DIA-MS2pep:
 ## 1. Step-by-step 
