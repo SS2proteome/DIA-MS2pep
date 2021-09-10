@@ -13,9 +13,7 @@ DIA-MS2pep require Perl programming language (versions 5.26), including the Perl
 
 ## DIA-MS2pep software
 DIA-MS2pep comprises of four main components: 
-![ScreenShot](/Scripts/Image/Fig_1.tif)
 ![Alt text](/Scripts/Image/Fig_1.png?raw=true "Title")
-![plot](/Scripts/Image/Fig_1.tif)
 
 1.        *DIA/SWATH_pesudo_MS2*: generation of pseudo-spectra from DIA data, where we provide two scripts for Obitrap and TripleTOF data, respectively. 
         
@@ -25,7 +23,7 @@ DIA-MS2pep comprises of four main components:
        
 4.        *Percolator_runner*: implementation of Percolator to validate the peptide hits at PSM, peptide and protein level. 
 
-
+![Alt text](/Scripts/Image/flow.png?raw=true "Title")
 
 ## Two options to run DIA-MS2pep:
 ## 1. Step-by-step 
