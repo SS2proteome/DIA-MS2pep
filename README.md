@@ -14,7 +14,7 @@ DIA-MS2pep require Perl programming language (versions 5.26), including the Perl
 ## DIA-MS2pep software
 DIA-MS2pep comprises of four main components: 
 ![ScreenShot](/Scripts/Image/Fig_1.tif)
-![Alt text](/Scripts/Image/Fig_1.tif?raw=true "Title")
+![Alt text](/Scripts/Image/Fig_1.png?raw=true "Title")
 ![plot](/Scripts/Image/Fig_1.tif)
 
 1.        *DIA/SWATH_pesudo_MS2*: generation of pseudo-spectra from DIA data, where we provide two scripts for Obitrap and TripleTOF data, respectively. 
