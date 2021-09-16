@@ -24,6 +24,7 @@ MSFragger_search_params = $MSFragger_search_params
 PTM = $PTM 
 ptm_search = $ptm_search
 max_processes = $max_processes
+datatype = $datatype
 " 
 
 # Generating pesudo-ms2 spectra by reading mgf and mzML files
@@ -32,8 +33,10 @@ dir=$PWD
 filelist=$(sed 's/.raw\|.RAW//g' <<<"$filelist")
 echo $filelist
 
+#>$dir/ms2pep.time
 for file in $filelist
 do
+	date "+%T $file pseudo_generation_start " >> $dir/ms2pep.time 
 	if [ ! -f ${file}.mzML ]
 	then
 		echo "DIA-MS2pep read mzML file as input, please use 
@@ -57,10 +60,21 @@ do
 	#nohup perl $MS2pepCodedir/DIA_pesudo_MS2.pl $file MS2pep $ms2ppm & # MS2pep is default name of the folder for storage of pseudo-ms2 spectra
 	if [ $max_processes ]
 	then
-		perl $MS2pepCodedir/pseudo-MS2spectrum/pseudo_ms2_multiforks.pl $file MS2pep $ms2ppm $max_processes
+		if [ $datatype = "DIA" ]
+		then
+			perl $MS2pepCodedir/pseudo-MS2spectrum/DIA_pesudo_MS2_multiforks.pl $file MS2pep $ms2ppm $max_processes
+		else
+			perl $MS2pepCodedir/pseudo-MS2spectrum/SWATH_pesudo_MS2_multiforks.pl $file MS2pep $ms2ppm $max_processes
+		fi
 	else
-		perl $MS2pepCodedir/pseudo-MS2spectrum/DIA_pesudo_MS2.pl $file MS2pep $ms2ppm $max_processes # MS2pep is default name of the folder for storage of pseudo-ms2 spectra
+		if [ $datatype = "DIA" ]
+		then
+			perl $MS2pepCodedir/pseudo-MS2spectrum/DIA_pesudo_MS2.pl $file MS2pep $ms2ppm $max_processes # MS2pep is default name of the folder for storage of pseudo-ms2 spectra
+		else
+			perl $MS2pepCodedir/pseudo-MS2spectrum/SWATH_pesudo_MS2.pl $file MS2pep $ms2ppm $max_processes # MS2pep is default name of the folder for storage of pseudo-ms2 spectra
+		fi
 	fi
+	date "+%T $file pseudo_generation_end" >> $dir/ms2pep.time 
 done
 
 #wait
@@ -93,22 +107,41 @@ fi
 cd ${dir}/MS2pep
 for file in $filelist
 do
+	date "+%T $file MSFragger_run_start" >> $dir/ms2pep.time 
 	echo "Performing data searching with MSFragger "
-	sh $MS2pepCodedir/DataSearch/MSFragger/MSFragger_runner.sh $MSFragger_search_engine $MSFragger_search_params $file $ptm_search
+	sh $MS2pepCodedir/DataSearch/MSFragger/MSFragger_runner.sh $MSFragger_search_engine $MSFragger_search_params $file $ptm_search $datatype
+	date "+%T $file MSFragger_run_end" >> $dir/ms2pep.time 
 done
 
 cd $dir
 for file in $filelist
 do
 	echo "Performing data refinement "
-	perl $MS2pepCodedir/SearchDataRefinement/MSFragger/DIA_data_refinement.pl $file MS2pep $ms1ppm $ms2ppm $PTM $ptm_search $fasta
-
+	date "+%T $file SearchDataRefinement_start" >> $dir/ms2pep.time 
+	if [ $max_processes ]
+	then
+		if [ $datatype = "DIA" ]
+		then
+			perl $MS2pepCodedir/SearchDataRefinement/MSFragger/DIA_data_refinement_multiforks.pl $file MS2pep $ms1ppm $ms2ppm $PTM $ptm_search $fasta $max_processes
+		else
+			perl $MS2pepCodedir/SearchDataRefinement/MSFragger/SWATH_data_refinement_multiforks.pl $file MS2pep $ms1ppm $ms2ppm $PTM $ptm_search $fasta $max_processes
+		fi
+		
+	else
+		if [ $datatype = "DIA" ]
+		then
+			perl $MS2pepCodedir/SearchDataRefinement/MSFragger/DIA_data_refinement.pl $file MS2pep $ms1ppm $ms2ppm $PTM $ptm_search $fasta
+		else
+			perl $MS2pepCodedir/SearchDataRefinement/MSFragger/SWATH_data_refinement.pl $file MS2pep $ms1ppm $ms2ppm $PTM $ptm_search $fasta
+		fi
+	fi
+	date "+%T $file SearchDataRefinement_end" >> $dir/ms2pep.time 
 done
 
 #wait
 
 for file in $filelist
-do
+do   date "+%T $file percolater_end" >> $dir/ms2pep.time 
 	(
 		cd MS2pep; 
 		echo "Performing FDR estimation with percolater  "
@@ -119,9 +152,13 @@ do
 		else
 			level="protein"
 			sh $MS2pepCodedir/FDR/percolator_runner.sh $file $fasta $level
+			if [ $ptm_search = 1 ]
+			then
+				sh $MS2pepCodedir/FDR/percolator_runner.sh $file $fasta "PTM"
+			fi
 		fi
 		
 	)
+	date "+%T $file percolater_end" >> $dir/ms2pep.time 
 done
-
 
