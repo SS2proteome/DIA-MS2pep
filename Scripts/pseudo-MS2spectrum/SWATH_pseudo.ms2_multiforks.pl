@@ -1,7 +1,5 @@
 #!/usr/bin/env perl
 
-# charge_script [$file] [$charge_dir] [ms2 ppm] [data points] [min_pearson] [min_res_pearson] [min_peaks_splited]
-
 use strict;
 use Data::Dumper;
 use List::Util qw(max min sum);
