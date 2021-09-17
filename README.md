@@ -123,4 +123,4 @@ Also, DIA-MS2pep supports parallelization of computation, **DIA_data_refinement_
 
 The configurat file is *DIA_MS2pep.config* (Demo/). 
 
-`sh DIA_MS2pep_runner.sh DIA_MS2pep.config`
+`sh DIA_MS2pep_runner.sh DIA_MS2pep.config demo_DIA`
