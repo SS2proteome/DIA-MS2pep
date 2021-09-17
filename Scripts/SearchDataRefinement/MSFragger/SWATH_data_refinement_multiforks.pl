@@ -584,16 +584,20 @@ my $frag_ppm_sd;
 
 if (scalar @pre_ppms){
 	$ppm_ave = ave(\@pre_ppms);
-	$ppm_sd = stdev(\@pre_ppms,$ppm_ave);;
+	$ppm_sd = stdev(\@pre_ppms,$ppm_ave);
 	printf ("\n\033[31m%s\t%s\t\033[32m%s\033[0m\n", $filename,"pre_ppm_ave: $ppm_ave","pre_ppm_sd: $ppm_sd");
 	print logfh join "\t", $filename,"pre_ppm_ave: $ppm_ave","pre_ppm_sd: $ppm_sd\n";
-	my ($prob1,$prob2);
-	($ppm_ave,$ppm_sd,$prob1,$prob2) = MassAccuracy::MassAccuracy(\@pre_ppms);
-	printf ("\n\033[31m%s\t%s\t\033[32m%s\033[0m\n", $filename,"pre_ppm_ave: $ppm_ave","pre_ppm_sd: $ppm_sd");
-	print logfh join "\t", $filename,"pre_ppm_ave: $ppm_ave","pre_ppm_sd: $ppm_sd\n";
-	print "prob1; $prob1; prob2: $prob2\n";
-	print logfh "prob1; $prob1; prob2: $prob2\n";
-	
+	if(scalar @pre_ppms >500 && ! $ptm){
+		my ($prob1,$prob2);
+		($ppm_ave,$ppm_sd,$prob1,$prob2) = MassAccuracy::MassAccuracy(\@pre_ppms);
+		printf ("\n\033[31m%s\t%s\t\033[32m%s\033[0m\n", $filename,"pre_ppm_ave: $ppm_ave","pre_ppm_sd: $ppm_sd");
+		print logfh join "\t", $filename,"pre_ppm_ave: $ppm_ave","pre_ppm_sd: $ppm_sd\n";
+		print "prob1; $prob1; prob2: $prob2\n";
+		print logfh "prob1; $prob1; prob2: $prob2\n";
+	}else{
+		print "scalar \@pre_ppms = ",(scalar @pre_ppms),"\n";
+		print logfh "scalar \@pre_ppms = ",(scalar @pre_ppms),"\n";
+	}
 }
 
 
@@ -602,15 +606,17 @@ if (scalar @frag_ppms){
 	$frag_ppm_sd = stdev(\@frag_ppms,$frag_ppm_ave);;
 	printf ("\n\033[31m%s\t%s\t\033[32m%s\033[0m\n", $filename,"frag_ppm_ave: $frag_ppm_ave","frag_ppm_sd: $frag_ppm_sd");
 	printf logfh join "\t",$filename,"frag_ppm_ave: $frag_ppm_ave","frag_ppm_sd: $frag_ppm_sd\n";
-	my ($prob1,$prob2);
-	($frag_ppm_ave,$frag_ppm_sd,$prob1,$prob2) = MassAccuracy::MassAccuracy(\@frag_ppms);
-	printf ("\n\033[31m%s\t%s\t\033[32m%s\033[0m\n", $filename,"frag_ppm_ave: $frag_ppm_ave","frag_ppm_sd: $frag_ppm_sd");
-	printf logfh join "\t", $filename,"frag_ppm_ave: $frag_ppm_ave","ppm_sd: $frag_ppm_sd\n";
-	print "prob1; $prob1; prob2: $prob2\n";
-	print logfh "prob1; $prob1; prob2: $prob2\n";
-	
+	if(scalar @frag_ppms > 500 && ! $ptm){
+		my ($prob1,$prob2);
+		($frag_ppm_ave,$frag_ppm_sd,$prob1,$prob2) = MassAccuracy::MassAccuracy(\@frag_ppms);
+		printf logfh join "\t", $filename,"frag_ppm_ave: $frag_ppm_ave","ppm_sd: $frag_ppm_sd\n";
+		print "prob1; $prob1; prob2: $prob2\n";
+		print logfh "prob1; $prob1; prob2: $prob2\n";
+	}else{
+		print "scalar \@pre_ppms = ",(scalar @frag_ppms),"\n";
+		print logfh "scalar \@pre_ppms = ",(scalar @frag_ppms),"\n";
+	}
 }
-
 #print STDERR Dumper \%search_res;
 
 my $yy;
