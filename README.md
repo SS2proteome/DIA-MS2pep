@@ -1,7 +1,9 @@
 # DIA-MS2pep
 
 DIA-MS2pep is a spectrum-centric tool of Data-Independent Acquisiton (DIA) data analysis, and can identify directly from DIA data without a pre-built spectral library. DIA-MS2pep can also identify the peptides with a putative modification. 
+
 DIA-MS2pep is an open source tool, compatible to Linux system users. For Windows system users, the setup of a Unix environment (Cygwin) is required (The installation process is automated and not complicated). 
+
 DIA-MS2pep require Perl programming language (versions 5.26), including the Perl modules including *Math*, *MIME*, *Statistics* and *Parallel::ForkManager*. 
 <!-- ![Alt text](/Scripts/Image/Fig_1.png?raw=true "Title")  -->
 
