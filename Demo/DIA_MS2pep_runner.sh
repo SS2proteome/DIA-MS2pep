@@ -91,7 +91,7 @@ if [ -f $MSFragger_search_params ]
 then
 	cp $MSFragger_search_params ${dir}/MS2pep 
 else
-	echo -e "No $MSFragger_search_engine in $dir \n";
+	echo -e "No $MSFragger_search_params in $dir \n";
 	exit
 fi
 
@@ -99,7 +99,7 @@ if [ -f $fasta ]
 then
 	cp $fasta ${dir}/MS2pep 
 else
-	echo -e "No $MSFragger_search_engine in $dir  \n";
+	echo -e "No $fasta in $dir  \n";
 	exit
 fi
 
