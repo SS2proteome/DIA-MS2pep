@@ -117,7 +117,7 @@ my $ms1scan;
 my $ms2scan;
 my %ms2toms1;
 my $index_ms1;
-my %next_ms1scan;
+my %index_ms1scan;
 my %index_ms2scan;
 
 my $ms1scan_mz;
@@ -166,6 +166,8 @@ while(<FH>){
 	$num_of_windows = $line[0];
 	$DIA_window_count{$num_of_windows}{lower} = $start;
 	$DIA_window_count{$num_of_windows}{higher} = $end;
+	$DIA_window_count{$num_of_windows}{center} = $premz;
+	$DIA_window_count{$num_of_windows}{size} = $size;
 	$DIA_window{$premz}{window} = $num_of_windows;
 }
 close(FH);
@@ -178,10 +180,9 @@ my %ms1scan_basepeak;
 my %ms2scan_last_index;
 my %ms2scan_next_index;
 my %premz_index_ms2scan;
+my %next_ms1scan;
 my $mslevel;
 my $premz_;
-
-
 open(FH,$mzML_file) or die "$! $mzML_file\n";
 while(<FH>){
 	if(/<spectrum index=".*scan=(\d+)/){
@@ -202,7 +203,6 @@ while(<FH>){
 		}else{
 			$next_ms1scan{$ms1scan} = $scan;
 			$ms1scan = $scan;
-			
 		}
 	}elsif(m{accession="MS:1000827" name="isolation window target m/z" value="([\d.]+)" }){
 		$premz_ = $1;
@@ -228,7 +228,7 @@ my %filehandle;
 
 my $line_block;
 my $counter_currernt;
-my $counter_next;
+
 my $premz;
 my %pseudomgffilehandles;
 my %pepXMLfilehandles;
@@ -298,25 +298,36 @@ while(<FH>){
 			print $fh $Line,"\n";
 		}
 		$counter_currernt = 1;
-		$counter_next = 2;
+
 	}
 	if(/^[0-9]/){
 		my @line = split / /,$Line;
+		my $fh =  $filehandle{ms1}{$counter_currernt};
+		#print $fh $Line,"    $counter_currernt---$DIA_window_count{$counter_currernt}{lower}---$DIA_window_count{$counter_currernt}{higher}\n";
 		
-		if($line[0] > $DIA_window_count{$counter_currernt}{higher} -5){
-			my $fh =  $filehandle{ms1}{$counter_next};
-			print $fh  $Line,"\n";
+			
+		if($line[0] > $DIA_window_count{$counter_currernt}{higher}  ){
+			#$counter_currernt = $counter_next;
+			#print "$line[0] > $DIA_window_count{$counter_currernt}{higher},\n";
+			while($line[0] > $DIA_window_count{$counter_currernt}{higher}  ){
+				exit if $counter_currernt >= $num_of_windows;
+				$counter_currernt++;
+			}
 		}
-		
-		if($line[0] > $DIA_window_count{$counter_currernt}{higher} + 5){
-			$counter_currernt = $counter_next;
-			$counter_next++;
-		}
-		
-		if($line[0] > $DIA_window_count{$counter_currernt}{lower} - 5 && $line[0] < $DIA_window_count{$counter_currernt}{higher} + 5){
+		if($line[0] > $DIA_window_count{$counter_currernt}{lower}  && $line[0] < $DIA_window_count{$counter_currernt}{higher} ){
 			my $fh =  $filehandle{ms1}{$counter_currernt};
 			print $fh $Line,"\n";
+			if( $counter_currernt < $num_of_windows){
+				my $fh_1 =  $filehandle{ms1}{$counter_currernt+1};
+				print $fh_1 $Line,"\n";
+			}
+			if( $counter_currernt > 1){
+				my $fh_2 =  $filehandle{ms1}{$counter_currernt-1};
+				print $fh_2 $Line,"\n";
+			}
 		}
+
+		
 	}
 # S       000002  000002
 # I       RTime   3.527
@@ -337,7 +348,7 @@ foreach my $key (1..$num_of_windows){
 }
 close(FH);
 print "\n";
-
+# exit;
 
 print "\n pseudo mgf file spliting!\n";
 
@@ -465,7 +476,7 @@ foreach my $key (1..$num_of_windows){
 
 my $window_info = [\%DIA_window,\%isolationlist,$num_of_windows];
 my $mzML_info = [\%ms1scan_start,\%ms1scan_cnt_index,\%ms1scan_basepeak,\%ms2scan_last_index,\%ms2scan_next_index,\%premz_index_ms2scan,\%ms2toms1,\%next_ms1scan];
-
+#print STDERR Dumper \%next_ms1scan;
 print "\nstart to parallal fork! \n";
 my $pm = new Parallel::ForkManager($max_processes);  
 
@@ -533,7 +544,7 @@ foreach my $f (@tmpfiles){
 		}
 		print TMPOUT $_;
 	}
-	close(f);
+	close(tmpf);
 }
 
 my $ppm_ave;
@@ -818,8 +829,14 @@ foreach my $mgffile(@pseudomgffiles){
 				if(exists $keep_specs{$title}){
 					printf "\r$title";
 					#print Dumper $keep_specs{$title};
+					
 					foreach my $charge (keys %{$keep_specs{$title}}){
+						if(exists $keep_specs{$title}{$charge}){
 						foreach my $exp_mz (keys %{$keep_specs{$title}{$charge}}){
+							if(exists $keep_specs{$title}{$charge}{$exp_mz} && scalar @{$keep_specs{$title}{$charge}{$exp_mz}->[0]} 
+							&& scalar @{$keep_specs{$title}{$charge}{$exp_mz}->[1]} && 
+							scalar @{$keep_specs{$title}{$charge}{$exp_mz}->[2]}){
+							#print STDERR Dumper $keep_specs{$title}{$charge}{$exp_mz}; 
 							my $iso = $keep_specs{$title}{$charge}{$exp_mz}->[0]->[2];
 							my $cal_premz =  $keep_specs{$title}{$charge}{$exp_mz}->[0]->[0];
 
@@ -873,7 +890,7 @@ foreach my $mgffile(@pseudomgffiles){
 							}
 								$m_{$filename}{2}{$protein=~/REV_/?"Decoy":"Target"}++ if($expect<0.01 and !$uniq_pl{2}{$pep}++);
 								   # print "$ppm_m\t$matched_int_sd\n";
-									if($ppm_m ne "NA" && $matched_int_sd ne "NA"){
+									if($ppm_m ne "NA" && $matched_int_sd ne "NA" ){
 										$m_{$filename}{1}{$protein=~/REV_/?"Decoy":"Target"}++ if($expect<0.01 and !$uniq_pl{1}{$pep}++);
 										if($PhosSiteProb || $mod_name){
 											print PTMOut join "\t", @{$keep_specs{$title}{$charge}{$exp_mz}->[1]},$ppm;
@@ -914,8 +931,8 @@ foreach my $mgffile(@pseudomgffiles){
 										print mgfout $line2;
 									#}
 								#}
-							
-							#}
+						}
+						}
 						}
 					}
 				}
