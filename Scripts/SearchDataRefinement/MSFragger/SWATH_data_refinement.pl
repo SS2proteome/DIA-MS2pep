@@ -1089,7 +1089,7 @@ while(<MGF>){
 		
 	}
 }
-
+close(MGF);
 }
 
 # foreach my $iso (2..$min_n_iso_required){
