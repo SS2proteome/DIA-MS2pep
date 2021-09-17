@@ -923,7 +923,7 @@ my %uniq_pl;
 
 open(pinout,">${dir}/${filename}.pin") or die  "${dir}/${filename}.pin $!";
 open(mgfout,">${dir}/$outfilename") or die  "${dir}/$outfilename $!";
-open(PTMOut,">${dir}/${filename}.PTM.tsv") or die  "${dir}/${filename}.PTM.tsv $!";
+open(PTMOut,">${dir}/${filename}.PTM.pin") or die  "${dir}/${filename}.PTM.pin $!";
 print pinout join "\t", qw/SpecId	Label	ScanNr	ExpMass	CalcMass	hyperscore deltahyperscore lnExpect	IonFrac	Mass	PepLen	Charge1	Charge2	Charge3	Charge4	Charge5	Charge6	enzInt	dM	absdM	Iso1 Iso2 Iso3 Iso_ge_4 LnPreInt RTINSECONDS PreSN/;
 print PTMOut join "\t", qw/SpecId	Label	ScanNr	ExpMass	CalcMass	hyperscore deltahyperscore lnExpect	IonFrac	Mass	PepLen	Charge1	Charge2	Charge3	Charge4	Charge5	Charge6	enzInt	dM	absdM	Iso1 Iso2 Iso3 Iso_ge_4 LnPreInt RTINSECONDS PreSN/;
 print pinout "\t";
