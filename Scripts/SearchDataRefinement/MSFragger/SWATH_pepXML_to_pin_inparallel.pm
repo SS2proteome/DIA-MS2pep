@@ -513,6 +513,7 @@ sub pepXML_refinement{
 
 						$multiple_hits{$tag_}{$start_scan}{$protein}++;
 						if($ptmfind && $ios_topic_peaks == 0 && $expect < 1 && $next_tag == 0 and $multiple_hits{$tag_}{$start_scan}{$protein} == 1){
+							#print "find\n";
 						#if($spectrum =~ /res2_napedro_L120420_009_SW-400AQUA_x0020__x0020_human_x0020_2ul_x0020_dilution_x0020_2.8419/){
 						
 							$ms1profile_ = defined $ms1profile_ ? $ms1profile_ : MS1_profile($prems1scan,$start_scan);
