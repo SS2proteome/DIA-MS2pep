@@ -1,6 +1,5 @@
 #!/usr/bin/env perl
-#
-# pepxml_post_script [$file] [$charge_dir] [${file}.mgf] [ms1 ppm]
+
 
 use strict;
 use Data::Dumper;
@@ -9,8 +8,7 @@ use lib dirname(__FILE__);
 use POSIX qw(floor ceil round);
 use List::Util qw(max min sum);
 use peptide;
-use Math;
-use ChargeAssignment;
+
 use IsotopeDistribution;
 use MassAccuracy;
 $| = 1;
@@ -983,7 +981,11 @@ while(<MGF>){
 			if(exists $keep_specs{$title}){
 				printf "\r$title";
 				foreach my $charge (keys %{$keep_specs{$title}}){
+					if(exists $keep_specs{$title}{$charge}){
 					foreach my $exp_mz (keys %{$keep_specs{$title}{$charge}}){	
+						if(exists $keep_specs{$title}{$charge}{$exp_mz} && scalar @{$keep_specs{$title}{$charge}{$exp_mz}->[0]} 
+								&& scalar @{$keep_specs{$title}{$charge}{$exp_mz}->[1]} && 
+								scalar @{$keep_specs{$title}{$charge}{$exp_mz}->[2]}){
 						my $iso = $keep_specs{$title}{$charge}{$exp_mz}->[0]->[2];
 						my $cal_premz =  $keep_specs{$title}{$charge}{$exp_mz}->[0]->[0];
 
@@ -1080,6 +1082,8 @@ while(<MGF>){
 						
 						#}
 					}
+				}
+				}
 				}
 			}
 			$line1 = "";
