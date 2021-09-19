@@ -187,7 +187,7 @@ open(FH,$mzML_file) or die "$! $mzML_file\n";
 while(<FH>){
 	if(/<spectrum index=".*scan=(\d+)/){
 		$scan = $1;
-	}elsif(/name="ms level" value="(\d+)"/){
+	}elsif(/accession="MS:1000511" name="ms level" value="(\d+)"/){
 		$mslevel = $1;
 		if($mslevel == 2){
 			#print "ms1:".$ms1scan,"ms:".$scan,"\n";
