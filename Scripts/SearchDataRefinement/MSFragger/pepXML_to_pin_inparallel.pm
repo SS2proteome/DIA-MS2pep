@@ -414,8 +414,8 @@ sub pepXML_refinement{
 					$expect = $1;
 					if(length($peptide) and $strip_peptide =~ /^[A-Z_]+$/ ){# and $start_scan =~ /^108741$/ ){#){ 
 						printf "\r$start_scan";
-						next if $start_scan < 20000;
-						exit if $start_scan > 25000;
+						#next if $start_scan < 20000;
+						#exit if $start_scan > 25000;
 						my $exp_premz;
 						my $exp_int;
 						my $exp_SN;
