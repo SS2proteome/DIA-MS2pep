@@ -176,7 +176,7 @@ open(FH,$mzML_file) or die "$! $mzML_file\n";
 while(<FH>){
 	if(m{<spectrum index="(\d+)" id="sample=[^ ]+ period=[^ ]+ cycle=(\d+) experiment=(\d+)"}){
 		($index, $cycle,$experiment) = ($1,$2,$3-1);
-	}elsif(/name="ms level" value="(\d+)"/){
+	}elsif(/accession="MS:1000511" name="ms level" value="(\d+)"/){
 		$mslevel = $1;
 		if($mslevel == 2){
 			$ms2scan = $index;
