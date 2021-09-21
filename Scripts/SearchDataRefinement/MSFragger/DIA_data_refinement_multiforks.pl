@@ -310,7 +310,7 @@ while(<FH>){
 			#$counter_currernt = $counter_next;
 			#print "$line[0] > $DIA_window_count{$counter_currernt}{higher},\n";
 			while($line[0] > $DIA_window_count{$counter_currernt}{higher}  ){
-				exit if $counter_currernt >= $num_of_windows;
+				last if $counter_currernt >= $num_of_windows;
 				$counter_currernt++;
 			}
 		}
