@@ -234,7 +234,11 @@ my %pseudomgffilehandles;
 my %pepXMLfilehandles;
 my %PTM_Types;
 my @PTM_variable;
+my %mod_aminoacid;
 my %fixed_variable;
+my $mod_aminoacid_mass;
+my ($peptide,$peptide_next_aa,$peptide_prev_aa,$mod_aminoacid_position);
+my $pepLen;
 my $tmp;
 #if(0){
 
@@ -427,7 +431,46 @@ foreach my $pepxmlfile(@pepxmlfiles){
 						}
 					}	
 				}
-			}
+			}elsif(m{<search_hit .* hit_rank=}){
+				($peptide,$peptide_next_aa,$peptide_prev_aa) = (m{peptide="([^"]+)" massdiff="[^"]+" calc_neutral_pep_mass="[^"]+" peptide_next_aa="(.)" num_missed_cleavages="\d+" num_tol_term="\d+" num_tot_proteins="\d+" tot_num_ions="[^"]+" hit_rank="[^"]+" num_matched_ions="[^"]+" protein="[^"]+" peptide_prev_aa="(.)" is_rejected="\d+">});
+				#$pepLen = length($peptide);
+				#$strip_peptide = $peptide;
+				}elsif(m{<mod_aminoacid_mass mass="([^"]+)" position="(\d+)"/>}){
+					$mod_aminoacid_mass = $1;
+					$mod_aminoacid_position = $2;
+					$mod_aminoacid{$mod_aminoacid_position} = $mod_aminoacid_mass;
+					
+				}elsif(m{<modification_info (mod_nterm_mass|mod_cterm_mass)="([^"]+)">}){
+					$mod_aminoacid_mass = $2;
+					$mod_aminoacid_position = $1;
+					$mod_aminoacid{$mod_aminoacid_position} = $mod_aminoacid_mass;
+				}elsif(m{</modification_info>}){
+					
+					my @pep = ($peptide =~ /./g);
+					$peptide = join "",map{$pep[$_].($mod_aminoacid{$_+1}? "[" :"" ).$mod_aminoacid{$_+1}.($mod_aminoacid{$_+1}? "]" : "")}0..$#pep;
+					
+					if(exists $mod_aminoacid{mod_nterm_mass}){
+						$peptide = "n(".$mod_aminoacid{mod_nterm_mass}.")".$peptide;
+					}
+					if(exists $mod_aminoacid{mod_cterm_mass}){
+						$peptide = $peptide . "(".$mod_aminoacid{mod_cterm_mass}.")c";
+					}
+					
+					while($peptide =~ /.\[[^][]+\]/g){
+						my $ptm_ = $&;
+						$PTM_Types{$ptm_}{$peptide_prev_aa.".".$peptide.".".$peptide_next_aa} = 1;
+					}
+					
+					if(exists $mod_aminoacid{mod_nterm_mass}){
+						my $ptm_ = "n(".$mod_aminoacid{mod_nterm_mass}.")";
+						$PTM_Types{$ptm_}{$peptide_prev_aa.".".$peptide.".".$peptide_next_aa} = 1;
+					}
+					if(exists $mod_aminoacid{mod_cterm_mass}){
+						my $ptm_ = "(".$mod_aminoacid{mod_cterm_mass}.")c";
+						$PTM_Types{$ptm_}{$peptide_prev_aa.".".$peptide.".".$peptide_next_aa} = 1;
+					}
+					undef %mod_aminoacid;
+				}
 		my $line = $_;
 		$line_block .= $line."\n";
 		if($line =~ /^<\/search_summary/){
